@@ -13,7 +13,6 @@ The same logic as [the example](https://github.com/hoytech/strfry/blob/master/do
 ```go
 package main
 
-
 import (
 	"log"
 
@@ -21,27 +20,27 @@ import (
 )
 
 var whiteList = map[string]struct{}{
-    "003ba9b2c5bd8afeed41a4ce362a8b7fc3ab59c25b6a1359cae9093f296dac01": {},
+	"003ba9b2c5bd8afeed41a4ce362a8b7fc3ab59c25b6a1359cae9093f296dac01": {},
 }
 
 // event-sifting function
 func acceptWhiteListed(input *evsifter.Input) (*evsifter.Result, error) {
 	if _, ok := whiteList[input.Event.PubKey]; ok {
-        return input.Accept()
+		return input.Accept()
 	}
 
-    // you can emit arbitrary logs by log.Print() family
-    log.Println("blocking event!")
-    return input.Reject("blocked: not on white-list")
+	// you can emit arbitrary logs by log.Print() family
+	log.Println("blocking event!")
+	return input.Reject("blocked: not on white-list")
 }
 
 func main() {
-    // initialize a evsifter.Runner and set an event-sifting function
-    var s evsifter.Runner
-    s.SiftWithFunc(acceptWhiteListed)
+	// initialize a evsifter.Runner and set an event-sifting function
+	var s evsifter.Runner
+	s.SiftWithFunc(acceptWhiteListed)
 
-    // start the event sifter routine
-    s.Run()
+	// start the event sifter routine
+	s.Run()
 }
 ```
 
