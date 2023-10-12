@@ -100,13 +100,19 @@ func (r *Runner) Run() {
 			sifter = acceptAll
 		}
 
-		out, err := sifter.Sift(&input)
+		res, err := sifter.Sift(&input)
 		if err != nil {
 			log.Println(err)
-			continue
+
+			// reject the event if sifter failed to process the input
+			res = &Result{
+				ID:     input.Event.ID,
+				Action: ActionReject,
+				Msg:    "event sifter failed to process input",
+			}
 		}
 
-		if err := jsonEnc.Encode(out); err != nil {
+		if err := jsonEnc.Encode(res); err != nil {
 			log.Printf("failed to encode event sifter result to JSON: %v", err)
 		}
 		bufStdout.Flush()
