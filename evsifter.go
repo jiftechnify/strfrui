@@ -3,6 +3,7 @@ package evsifter
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -82,6 +83,10 @@ func (i *Input) Accept() (*Result, error) {
 }
 
 // Reject rejects the event in the input with a rejection message to the client.
+//
+// As per [NIP-01], the message should be prefixed with a machine-readable word followed by ":", e.g. "blocked: you are not allowed to write events"
+//
+// [NIP-01]: https://github.com/nostr-protocol/nips/blob/master/01.md
 func (i *Input) Reject(msg string) (*Result, error) {
 	return &Result{
 		ID:     i.Event.ID,
@@ -131,28 +136,35 @@ func (r *Runner) Run() {
 		jsonEnc   = json.NewEncoder(bufStdout)
 	)
 
-	for scanner.Scan() {
-		var input Input
-		if err := json.Unmarshal(scanner.Bytes(), &input); err != nil {
-			log.Printf("failed to parse input: %v", err)
-			continue
+	var processInput = func(input *Input) (*Result, error) {
+		if input.Type != "new" {
+			return nil, fmt.Errorf("unexpected input type: %s", input.Type)
 		}
 
 		sifter := r.sifter
 		if sifter == nil {
 			sifter = acceptAll
 		}
+		return sifter.Sift(input)
+	}
 
-		res, err := sifter.Sift(&input)
+	for scanner.Scan() {
+		var input Input
+		if err := json.Unmarshal(scanner.Bytes(), &input); err != nil {
+			log.Printf("failed to parse input: %v", err)
+
+			// write malformed output in order to reject event
+			_ = jsonEnc.Encode(Result{ID: ""})
+			bufStdout.Flush()
+			continue
+		}
+
+		res, err := processInput(&input)
 		if err != nil {
 			log.Println(err)
 
-			// reject the event if sifter failed to process the input
-			res = &Result{
-				ID:     input.Event.ID,
-				Action: ActionReject,
-				Msg:    "event sifter failed to process input",
-			}
+			// reject the event by default if sifter returns error
+			res, _ = input.Reject("error: event sifter failed to process input")
 		}
 
 		if err := jsonEnc.Encode(res); err != nil {
