@@ -9,16 +9,27 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
+// SourceType represents a source type of a Nostr event, in other words, where an event came from.
 type SourceType string
 
 const (
-	SourceTypeIP4    SourceType = "IP4"
-	SourceTypeIP6    SourceType = "IP6"
+	// SourceTypeIP4 shows that an event was sent from a client which has an IPv4 address.
+	SourceTypeIP4 SourceType = "IP4"
+
+	// SourceTypeIP6 shows that an event was sent from a client which has an IPv6 address.
+	SourceTypeIP6 SourceType = "IP6"
+
+	// SourceTypeImport shows that an event was imported via "strfry import" command.
 	SourceTypeImport SourceType = "Import"
+
+	// SourceTypeStream shows that an event was imported from another relay via "strfry stream" or "strfry router" command.
 	SourceTypeStream SourceType = "Stream"
-	SourceTypeSync   SourceType = "Sync"
+
+	// SourceTypeSync shows that an event was imported from another relay via "strfry sync" command.
+	SourceTypeSync SourceType = "Sync"
 )
 
+// Action represents a type of action by event sifter, in other words, how to process an event.
 type Action string
 
 const (
@@ -27,60 +38,92 @@ const (
 	ActionShadowReject Action = "shadowReject"
 )
 
+// Input is a data structure of event sifter's input.
 type Input struct {
-	Type       string       `json:"type"`
-	Event      *nostr.Event `json:"event"`
-	ReceivedAt uint64       `json:"receivedAt"`
-	SourceType SourceType   `json:"sourceType"`
-	SourceInfo string       `json:"sourceInfo"`
+	// A type of input. As of strfry 0.9.6, it is always "new".
+	Type string `json:"type"`
+
+	// An event data sent by a client or imported from file / another relay.
+	Event *nostr.Event `json:"event"`
+
+	// Unix timestamp (in second) of when the event was received by the relay.
+	ReceivedAt uint64 `json:"receivedAt"`
+
+	// The source type, or where the event came from.
+	SourceType SourceType `json:"sourceType"`
+
+	// Information about event source. If SourceType is...
+	//
+	//   - SourceTypeIP4 or SourceTypeIP6, it's a string representaion of client's IP address.
+	//   - SourceTypeStream or SourceTypeSync, it's a URL of a source relay.
+	//   - SourceTypeImport, it's an empty string.
+	SourceInfo string `json:"sourceInfo"`
 }
 
+// Result is a data structure of event sifter's output.
+// It can be generated from methods of an Input.
 type Result struct {
-	ID     string `json:"id"`
+	// The ID of the target event, taken from the ID field of Input.
+	ID string `json:"id"`
+
+	// An action to take on the target event.
 	Action Action `json:"action"`
-	Msg    string `json:"msg"`
+
+	// A message to be sent to a client (included in an OK message) if event is rejected.
+	Msg string `json:"msg"`
 }
 
-func (i *Input) Accept() *Result {
+// Accept accepts the event in the input.
+func (i *Input) Accept() (*Result, error) {
 	return &Result{
 		ID:     i.Event.ID,
 		Action: ActionAccept,
-	}
+	}, nil
 }
 
-func (i *Input) Reject(msg string) *Result {
+// Reject rejects the event in the input with a rejection message to the client.
+func (i *Input) Reject(msg string) (*Result, error) {
 	return &Result{
 		ID:     i.Event.ID,
 		Action: ActionReject,
 		Msg:    msg,
-	}
+	}, nil
 }
 
-func (i *Input) ShadowReject() *Result {
+// ShadowReject silently rejects the event in the input, that is, makes it look accepted to the client, but actually reject it.
+func (i *Input) ShadowReject() (*Result, error) {
 	return &Result{
 		ID:     i.Event.ID,
 		Action: ActionShadowReject,
-	}
+	}, nil
 }
 
+// A Sifter decides whether accept or reject an event based on Input, the event data itself with context information.
+//
+// Sift should return either Result with an action to take on the event, or error if it couldn't process the input.
+// If error is returned from Sift, the event is rejected by default.
 type Sifter interface {
 	Sift(input *Input) (*Result, error)
 }
 
+// SifterFunc is an adapter to allow the use of functions which takes a sifter Input and returns a sifter Result as a Sifter.
 type SifterFunc func(input *Input) (*Result, error)
 
 func (s SifterFunc) Sift(input *Input) (*Result, error) {
 	return s(input)
 }
 
+// Runner implements the main routine of a event sifter as Run() method.
+// The zero value for Runner is a valid Runner that accepts all events.
 type Runner struct {
 	sifter Sifter
 }
 
 var acceptAll = SifterFunc(func(input *Input) (*Result, error) {
-	return input.Accept(), nil
+	return input.Accept()
 })
 
+// Run executes the main routine of a event sifter.
 func (r *Runner) Run() {
 	var (
 		scanner   = bufio.NewScanner(os.Stdin)
@@ -119,10 +162,12 @@ func (r *Runner) Run() {
 	}
 }
 
+// SiftWith sets a Sifter implementation to the Runner.
 func (r *Runner) SiftWith(s Sifter) {
 	r.sifter = s
 }
 
+// SiftWithFunc sets an event sifting function as a Sifter to the Runner.
 func (r *Runner) SiftWithFunc(sf func(input *Input) (*Result, error)) {
 	r.sifter = SifterFunc(sf)
 }
