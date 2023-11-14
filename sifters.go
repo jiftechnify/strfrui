@@ -45,7 +45,7 @@ type rejectorSetter interface {
 
 type rejectionOption func(rejectorSetter)
 
-func WithShadowReject(s rejectorSetter) {
+var WithShadowReject rejectionOption = func(s rejectorSetter) {
 	s.setRejector(shadowReject)
 }
 
