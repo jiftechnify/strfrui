@@ -104,6 +104,36 @@ func AuthorMatcher(matcher func(string) bool, mode Mode, rejOpts ...rejectionOpt
 	return s
 }
 
+type kindSifter struct {
+	kinds  map[int]struct{}
+	mode   Mode
+	reject rejector
+}
+
+func (s *kindSifter) Sift(input *Input) (*Result, error) {
+	_, matched := s.kinds[input.Event.Kind]
+	if shouldAccept(matched, s.mode) {
+		return input.Accept()
+	}
+	return s.reject(input), nil
+}
+
+func (s *kindSifter) setRejector(r rejector) {
+	s.reject = r
+}
+
+func KindList(kinds []int, mode Mode, rejOpts ...rejectionOption) *kindSifter {
+	s := &kindSifter{
+		kinds:  sliceToSet(kinds),
+		mode:   mode,
+		reject: rejectWithMsg("blocked: event kind not allowed"),
+	}
+	for _, opt := range rejOpts {
+		opt(s)
+	}
+	return s
+}
+
 func sliceToSet[T comparable](s []T) map[T]struct{} {
 	m := make(map[T]struct{})
 	for _, v := range s {
