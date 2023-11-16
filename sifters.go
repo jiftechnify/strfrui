@@ -56,6 +56,35 @@ func WithRejectMessage(msg string) rejectionOption {
 	}
 }
 
+type pipelineSifter struct {
+	sifters []Sifter
+}
+
+func (s *pipelineSifter) Sift(input *Input) (*Result, error) {
+	var (
+		res *Result
+		err error
+	)
+	for _, s := range s.sifters {
+		res, err = s.Sift(input)
+
+		if err != nil {
+			return nil, err
+		}
+		if res.Action != ActionAccept {
+			// fail-fast
+			return res, nil
+		}
+	}
+	return res, nil
+}
+
+func Pipeline(sifters ...Sifter) *pipelineSifter {
+	return &pipelineSifter{
+		sifters,
+	}
+}
+
 type authorSifter struct {
 	matchAuthor func(string) bool
 	mode        Mode
