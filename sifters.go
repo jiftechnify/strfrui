@@ -23,6 +23,13 @@ func shouldAccept(matched bool, m Mode) bool {
 
 type rejector func(*Input) *Result
 
+var shadowReject = func(input *Input) *Result {
+	return &Result{
+		ID:     input.Event.ID,
+		Action: ActionShadowReject,
+	}
+}
+
 func rejectWithMsg(msg string) rejector {
 	return func(input *Input) *Result {
 		return &Result{
@@ -30,12 +37,6 @@ func rejectWithMsg(msg string) rejector {
 			Action: ActionReject,
 			Msg:    msg,
 		}
-	}
-}
-func shadowReject(input *Input) *Result {
-	return &Result{
-		ID:     input.Event.ID,
-		Action: ActionShadowReject,
 	}
 }
 
