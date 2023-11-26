@@ -1,6 +1,7 @@
 package evsifter
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/nbd-wtf/go-nostr"
@@ -84,6 +85,14 @@ type rejectorSetter interface {
 	setRejector(rejector)
 }
 
+type rejectorSetterEmbed struct {
+	reject rejector
+}
+
+func (s *rejectorSetterEmbed) setRejector(r rejector) {
+	s.reject = r
+}
+
 type rejectionOption func(rejectorSetter)
 
 var WithShadowReject rejectionOption = func(s rejectorSetter) {
@@ -148,7 +157,7 @@ func Pipeline(sifters ...Sifter) *pipelineSifter {
 type authorSifter struct {
 	matchAuthor func(string) bool
 	mode        Mode
-	reject      rejector
+	rejectorSetterEmbed
 }
 
 func (s *authorSifter) Sift(input *Input) (*Result, error) {
@@ -156,10 +165,6 @@ func (s *authorSifter) Sift(input *Input) (*Result, error) {
 		return input.Accept()
 	}
 	return s.reject(input), nil
-}
-
-func (s *authorSifter) setRejector(r rejector) {
-	s.reject = r
 }
 
 func matchAuthorWithList(pubkeys []string) func(string) bool {
@@ -174,8 +179,9 @@ func AuthorList(authors []string, mode Mode, rejOpts ...rejectionOption) *author
 	s := &authorSifter{
 		matchAuthor: matchAuthorWithList(authors),
 		mode:        mode,
-		reject:      rejectWithMsg("blocked: author not allowed to send events"),
 	}
+	s.reject = rejectWithMsg("blocked: author not allowed to send events")
+
 	for _, opt := range rejOpts {
 		opt(s)
 	}
@@ -186,8 +192,9 @@ func AuthorMatcher(matcher func(string) bool, mode Mode, rejOpts ...rejectionOpt
 	s := &authorSifter{
 		matchAuthor: matcher,
 		mode:        mode,
-		reject:      rejectWithMsg("blocked: author not allowed to send events"),
 	}
+	s.reject = rejectWithMsg("blocked: author not allowed to send events")
+
 	for _, opt := range rejOpts {
 		opt(s)
 	}
@@ -195,9 +202,9 @@ func AuthorMatcher(matcher func(string) bool, mode Mode, rejOpts ...rejectionOpt
 }
 
 type kindSifter struct {
-	kinds  map[int]struct{}
-	mode   Mode
-	reject rejector
+	kinds map[int]struct{}
+	mode  Mode
+	rejectorSetterEmbed
 }
 
 func (s *kindSifter) Sift(input *Input) (*Result, error) {
@@ -208,16 +215,13 @@ func (s *kindSifter) Sift(input *Input) (*Result, error) {
 	return s.reject(input), nil
 }
 
-func (s *kindSifter) setRejector(r rejector) {
-	s.reject = r
-}
-
 func KindList(kinds []int, mode Mode, rejOpts ...rejectionOption) *kindSifter {
 	s := &kindSifter{
-		kinds:  sliceToSet(kinds),
-		mode:   mode,
-		reject: rejectWithMsg("blocked: event kind not allowed"),
+		kinds: sliceToSet(kinds),
+		mode:  mode,
 	}
+	s.reject = rejectWithMsg("blocked: event kind not allowed")
+
 	for _, opt := range rejOpts {
 		opt(s)
 	}
@@ -227,7 +231,7 @@ func KindList(kinds []int, mode Mode, rejOpts ...rejectionOption) *kindSifter {
 type filtersSifter struct {
 	filters nostr.Filters
 	mode    Mode
-	reject  rejector
+	rejectorSetterEmbed
 }
 
 func (s *filtersSifter) Sift(input *Input) (*Result, error) {
@@ -238,16 +242,13 @@ func (s *filtersSifter) Sift(input *Input) (*Result, error) {
 	return s.reject(input), nil
 }
 
-func (s *filtersSifter) setRejector(r rejector) {
-	s.reject = r
-}
-
 func Filters(filters []nostr.Filter, mode Mode, rejOpts ...rejectionOption) *filtersSifter {
 	s := &filtersSifter{
 		filters: nostr.Filters(filters),
 		mode:    mode,
-		reject:  rejectWithMsg("blocked: event blocked by filters"),
 	}
+	s.reject = rejectWithMsg("blocked: event not allowed due to judgement by filters")
+
 	for _, opt := range rejOpts {
 		opt(s)
 	}
