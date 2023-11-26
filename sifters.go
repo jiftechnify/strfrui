@@ -1,6 +1,10 @@
 package evsifter
 
-import "log"
+import (
+	"log"
+
+	"github.com/nbd-wtf/go-nostr"
+)
 
 type Mode int
 
@@ -157,6 +161,36 @@ func KindList(kinds []int, mode Mode, rejOpts ...rejectionOption) *kindSifter {
 		kinds:  sliceToSet(kinds),
 		mode:   mode,
 		reject: rejectWithMsg("blocked: event kind not allowed"),
+	}
+	for _, opt := range rejOpts {
+		opt(s)
+	}
+	return s
+}
+
+type filtersSifter struct {
+	filters nostr.Filters
+	mode    Mode
+	reject  rejector
+}
+
+func (s *filtersSifter) Sift(input *Input) (*Result, error) {
+	matched := s.filters.Match(input.Event)
+	if shouldAccept(matched, s.mode) {
+		return input.Accept()
+	}
+	return s.reject(input), nil
+}
+
+func (s *filtersSifter) setRejector(r rejector) {
+	s.reject = r
+}
+
+func Filters(filters []nostr.Filter, mode Mode, rejOpts ...rejectionOption) *filtersSifter {
+	s := &filtersSifter{
+		filters: nostr.Filters(filters),
+		mode:    mode,
+		reject:  rejectWithMsg("blocked: event blocked by filters"),
 	}
 	for _, opt := range rejOpts {
 		opt(s)
