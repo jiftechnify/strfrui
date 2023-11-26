@@ -25,6 +25,42 @@ func shouldAccept(matched bool, m Mode) bool {
 	}
 }
 
+// sifter with modifiers that change its behavior (especially in Pipeline)
+type moddedSifter struct {
+	s           Sifter
+	name        string // sifter's name in logs
+	acceptEarly bool   // if true and underlying sifter accepts, pipelineSifter returns early
+}
+
+func (s *moddedSifter) Sift(input *Input) (*Result, error) {
+	// modifiers don't change the logic of the underlying sifter.
+	return s.s.Sift(input)
+}
+
+// WithMod makes the sifter "modifiable" by sifter modifiers.
+// You can chain modification methods to modify behavior of the sifter.
+func WithMod(s Sifter) *moddedSifter {
+	return &moddedSifter{
+		s:           s,
+		name:        "",
+		acceptEarly: false,
+	}
+}
+
+// Name sets the name of the sifter in logs.
+func (s *moddedSifter) Name(name string) *moddedSifter {
+	s.name = name
+	return s
+}
+
+// AccpetEarly sets "accept early" flag to the sifter.
+//
+// If sifters with "accept early" flag are used in Pipeline sifters and they accept event, pipelines return early (unconditionally accept the event without further judgements).
+func (s *moddedSifter) AcceptEarly() *moddedSifter {
+	s.acceptEarly = true
+	return s
+}
+
 type rejector func(*Input) *Result
 
 var shadowReject = func(input *Input) *Result {
@@ -61,7 +97,7 @@ func WithRejectMessage(msg string) rejectionOption {
 }
 
 type pipelineSifter struct {
-	sifters []Sifter
+	sifters []*moddedSifter
 }
 
 func (s *pipelineSifter) Sift(input *Input) (*Result, error) {
@@ -73,10 +109,17 @@ func (s *pipelineSifter) Sift(input *Input) (*Result, error) {
 		res, err = s.Sift(input)
 
 		if err != nil {
+			log.Printf("pipelineSifter: %q failed: %v", s.name, err)
 			return nil, err
+		}
+		if s.acceptEarly && res.Action == ActionAccept {
+			// early return
+			log.Printf("pipelineSifter: %q accepted event (id: %v), so returning ealry", s.name, input.Event.ID)
+			return res, nil
 		}
 		if res.Action != ActionAccept {
 			// fail-fast
+			log.Printf("pipelineSifter: %q rejected event (id: %v)", s.name, input.Event.ID)
 			return res, nil
 		}
 	}
@@ -84,8 +127,21 @@ func (s *pipelineSifter) Sift(input *Input) (*Result, error) {
 }
 
 func Pipeline(sifters ...Sifter) *pipelineSifter {
+	modded := make([]*moddedSifter, 0, len(sifters))
+	for i, s := range sifters {
+		mod, ok := s.(*moddedSifter)
+		if !ok {
+			sifters = append(sifters, WithMod(s).Name(fmt.Sprintf("sifter #%d", i)))
+			continue
+		}
+		if ok && mod.name == "" {
+			sifters = append(sifters, mod.Name(fmt.Sprintf("sifter #%d", i)))
+			continue
+		}
+		sifters = append(sifters, mod)
+	}
 	return &pipelineSifter{
-		sifters,
+		sifters: modded,
 	}
 }
 
