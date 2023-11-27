@@ -3,6 +3,8 @@ package evsifter
 import (
 	"fmt"
 	"log"
+	"regexp"
+	"strings"
 
 	"github.com/nbd-wtf/go-nostr"
 )
@@ -154,6 +156,33 @@ func Pipeline(sifters ...Sifter) *pipelineSifter {
 	}
 }
 
+type filtersSifter struct {
+	filters nostr.Filters
+	mode    Mode
+	rejectorSetterEmbed
+}
+
+func (s *filtersSifter) Sift(input *Input) (*Result, error) {
+	matched := s.filters.Match(input.Event)
+	if shouldAccept(matched, s.mode) {
+		return input.Accept()
+	}
+	return s.reject(input), nil
+}
+
+func Filters(filters []nostr.Filter, mode Mode, rejOpts ...rejectionOption) *filtersSifter {
+	s := &filtersSifter{
+		filters: nostr.Filters(filters),
+		mode:    mode,
+	}
+	s.reject = rejectWithMsg("blocked: event not allowed due to judgement by filters")
+
+	for _, opt := range rejOpts {
+		opt(s)
+	}
+	return s
+}
+
 type authorSifter struct {
 	matchAuthor func(string) bool
 	mode        Mode
@@ -228,26 +257,36 @@ func KindList(kinds []int, mode Mode, rejOpts ...rejectionOption) *kindSifter {
 	return s
 }
 
-type filtersSifter struct {
-	filters nostr.Filters
-	mode    Mode
+type wordsSifter struct {
+	matchWithWords func(string) bool
+	mode           Mode
 	rejectorSetterEmbed
 }
 
-func (s *filtersSifter) Sift(input *Input) (*Result, error) {
-	matched := s.filters.Match(input.Event)
-	if shouldAccept(matched, s.mode) {
+func (s *wordsSifter) Sift(input *Input) (*Result, error) {
+	if shouldAccept(s.matchWithWords(input.Event.Content), s.mode) {
 		return input.Accept()
 	}
 	return s.reject(input), nil
 }
 
-func Filters(filters []nostr.Filter, mode Mode, rejOpts ...rejectionOption) *filtersSifter {
-	s := &filtersSifter{
-		filters: nostr.Filters(filters),
-		mode:    mode,
+func matchContentWithWordList(words []string) func(string) bool {
+	return func(pubkey string) bool {
+		for _, word := range words {
+			if strings.Contains(pubkey, word) {
+				return true
+			}
+		}
+		return false
 	}
-	s.reject = rejectWithMsg("blocked: event not allowed due to judgement by filters")
+}
+
+func WordList(words []string, mode Mode, rejOpts ...rejectionOption) *wordsSifter {
+	s := &wordsSifter{
+		matchWithWords: matchContentWithWordList(words),
+		mode:           mode,
+	}
+	s.reject = rejectWithMsg("blocked: content have a word not allowed")
 
 	for _, opt := range rejOpts {
 		opt(s)
@@ -255,10 +294,48 @@ func Filters(filters []nostr.Filter, mode Mode, rejOpts ...rejectionOption) *fil
 	return s
 }
 
-func sliceToSet[T comparable](s []T) map[T]struct{} {
-	m := make(map[T]struct{})
-	for _, v := range s {
-		m[v] = struct{}{}
+func WordMatcher(matcher func(string) bool, mode Mode, rejOpts ...rejectionOption) *wordsSifter {
+	s := &wordsSifter{
+		matchWithWords: matcher,
+		mode:           mode,
 	}
-	return m
+	s.reject = rejectWithMsg("blocked: content have a word not allowed")
+
+	for _, opt := range rejOpts {
+		opt(s)
+	}
+	return s
+}
+
+type regexpsSifter struct {
+	regexps []*regexp.Regexp
+	mode    Mode
+	rejectorSetterEmbed
+}
+
+func (s *regexpsSifter) Sift(input *Input) (*Result, error) {
+	matched := false
+	for _, r := range s.regexps {
+		if r.MatchString(input.Event.Content) {
+			matched = true
+			break
+		}
+	}
+	if shouldAccept(matched, s.mode) {
+		return input.Accept()
+	}
+	return s.reject(input), nil
+}
+
+func Regexps(regexps []*regexp.Regexp, mode Mode, rejOpts ...rejectionOption) *regexpsSifter {
+	s := &regexpsSifter{
+		regexps: regexps,
+		mode:    mode,
+	}
+	s.reject = rejectWithMsg("blocked: content not allowed")
+
+	for _, opt := range rejOpts {
+		opt(s)
+	}
+	return s
 }
