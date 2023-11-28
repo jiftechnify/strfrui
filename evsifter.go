@@ -30,6 +30,16 @@ const (
 	SourceTypeSync SourceType = "Sync"
 )
 
+// IsEndUser checks whether the source is an "end-user" (or, a "user-facing client").
+func (st SourceType) IsEndUser() bool {
+	switch st {
+	case SourceTypeIP4, SourceTypeIP6:
+		return true
+	default:
+		return false
+	}
+}
+
 // Action represents a type of action by event sifter, in other words, how to process an event.
 type Action string
 
