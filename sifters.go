@@ -299,6 +299,41 @@ func KindMatcher(matcher func(int) bool, mode Mode, rejOpts ...rejectionOption) 
 	return s
 }
 
+type createdAtRangeSifter struct {
+	maxPastDelta   time.Duration
+	maxFutureDelta time.Duration
+	mode           Mode
+	rejectorSetterEmbed
+}
+
+func (s *createdAtRangeSifter) Sift(input *Input) (*Result, error) {
+	now := time.Now()
+	createdAt := input.Event.CreatedAt.Time()
+
+	matchPast := s.maxPastDelta == 0 || !createdAt.Before(now.Add(-s.maxPastDelta))
+	matchFuture := s.maxFutureDelta == 0 || !createdAt.After(now.Add(s.maxFutureDelta))
+	matched := matchPast && matchFuture
+
+	if shouldAccept(matched, s.mode) {
+		return input.Accept()
+	}
+	return s.reject(input), nil
+}
+
+func CreatedAtRange(maxPastDelta, maxFutureDelta time.Duration, mode Mode, rejOpts ...rejectionOption) *createdAtRangeSifter {
+	s := &createdAtRangeSifter{
+		maxPastDelta:   maxPastDelta,
+		maxFutureDelta: maxFutureDelta,
+		mode:           mode,
+	}
+	s.reject = rejectWithMsg("blocked: event created_at not allowed")
+
+	for _, opt := range rejOpts {
+		opt(s)
+	}
+	return s
+}
+
 type wordsSifter struct {
 	matchWithWords func(string) bool
 	mode           Mode
