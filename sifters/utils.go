@@ -1,4 +1,4 @@
-package evsifter
+package sifters
 
 func sliceToSet[T comparable](s []T) map[T]struct{} {
 	m := make(map[T]struct{})
