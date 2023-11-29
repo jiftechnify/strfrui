@@ -15,7 +15,7 @@ type rateLimitKeyDeriveFn func(*evsifter.Input) (shouldLimit bool, key string)
 type rateLimitSifter struct {
 	rateLimiter throttled.RateLimiterCtx
 	getLimitKey rateLimitKeyDeriveFn
-	reject      rejector
+	reject      rejectionFn
 }
 
 func (s *rateLimitSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
@@ -44,7 +44,7 @@ const (
 	RateLimitByPubKey
 )
 
-func RateLimitPerUser(quota throttled.RateQuota, userKey rateLimitUserKey, exclude func(*evsifter.Input) bool) *rateLimitSifter {
+func RateLimitPerUser(quota throttled.RateQuota, userKey rateLimitUserKey, exclude func(*evsifter.Input) bool, rejFn rejectionFn) *rateLimitSifter {
 	store, _ := memstore.NewCtx(65536)
 	rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, quota)
 
@@ -67,7 +67,7 @@ func RateLimitPerUser(quota throttled.RateQuota, userKey rateLimitUserKey, exclu
 				return false, ""
 			}
 		},
-		reject: rejectWithMsg("blocked: rate limit exceeded"),
+		reject: orDefaultRejFn(rejFn, RejectWithMsg("rate-limited: rate limit exceeded")),
 	}
 	return s
 }
@@ -77,7 +77,7 @@ func RateLimitPerUser(quota throttled.RateQuota, userKey rateLimitUserKey, exclu
 type multiRateLimitSifter struct {
 	selectRateLimiter func(*evsifter.Input) throttled.RateLimiterCtx
 	getLimitKey       rateLimitKeyDeriveFn
-	reject            rejector
+	reject            rejectionFn
 }
 
 func (s *multiRateLimitSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
@@ -113,7 +113,7 @@ type rateLimiterPerKind struct {
 	rateLimiter throttled.RateLimiterCtx
 }
 
-func RateLimitPerUserAndKind(quotas []RateLimitQuotaPerKind, userKey rateLimitUserKey, exclude func(*evsifter.Input) bool) *multiRateLimitSifter {
+func RateLimitPerUserAndKind(quotas []RateLimitQuotaPerKind, userKey rateLimitUserKey, exclude func(*evsifter.Input) bool, rejFn rejectionFn) *multiRateLimitSifter {
 	store, _ := memstore.NewCtx(65536)
 	limiters := make([]rateLimiterPerKind, 0, len(quotas))
 	for _, quota := range quotas {
@@ -151,7 +151,7 @@ func RateLimitPerUserAndKind(quotas []RateLimitQuotaPerKind, userKey rateLimitUs
 				return false, ""
 			}
 		},
-		reject: rejectWithMsg("blocked: rate limit exceeded"),
+		reject: orDefaultRejFn(rejFn, RejectWithMsg("rate-limited: rate limit exceeded")),
 	}
 	return s
 }

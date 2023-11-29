@@ -1,6 +1,7 @@
 package sifters
 
 import (
+	"fmt"
 	"time"
 
 	evsifter "github.com/jiftechnify/strfry-evsifter"
@@ -10,7 +11,7 @@ import (
 type filtersSifter struct {
 	filters nostr.Filters
 	mode    Mode
-	rejectorSetterEmbed
+	reject  rejectionFn
 }
 
 func (s *filtersSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
@@ -21,15 +22,15 @@ func (s *filtersSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	return s.reject(input), nil
 }
 
-func Filters(filters []nostr.Filter, mode Mode, rejOpts ...rejectionOption) *filtersSifter {
+func Filters(filters []nostr.Filter, mode Mode, rejFn rejectionFn) *filtersSifter {
 	s := &filtersSifter{
 		filters: nostr.Filters(filters),
 		mode:    mode,
-	}
-	s.reject = rejectWithMsg("blocked: event not allowed due to judgement by filters")
-
-	for _, opt := range rejOpts {
-		opt(s)
+		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
+			mode,
+			"blocked: event must match filters to be accepted",
+			"blocked: event doesn't match filters",
+		)),
 	}
 	return s
 }
@@ -37,7 +38,7 @@ func Filters(filters []nostr.Filter, mode Mode, rejOpts ...rejectionOption) *fil
 type authorsSifter struct {
 	matchAuthor func(string) bool
 	mode        Mode
-	rejectorSetterEmbed
+	reject      rejectionFn
 }
 
 func (s *authorsSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
@@ -55,36 +56,30 @@ func matchAuthorWithList(pubkeys []string) func(string) bool {
 	}
 }
 
-func Authors(authors []string, mode Mode, rejOpts ...rejectionOption) *authorsSifter {
+func Authors(authors []string, mode Mode, rejFn rejectionFn) *authorsSifter {
 	s := &authorsSifter{
 		matchAuthor: matchAuthorWithList(authors),
 		mode:        mode,
-	}
-	s.reject = rejectWithMsg("blocked: author not allowed to send events")
-
-	for _, opt := range rejOpts {
-		opt(s)
+		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
+			mode,
+			"blocked: author is not int the whitelist",
+			"blocked: author is in the blacklist",
+		)),
 	}
 	return s
 }
 
-func AuthorMatcher(matcher func(string) bool, mode Mode, rejOpts ...rejectionOption) *authorsSifter {
+func AuthorMatcher(matcher func(string) bool, mode Mode, rejFn rejectionFn) *authorsSifter {
 	s := &authorsSifter{
 		matchAuthor: matcher,
 		mode:        mode,
-	}
-	s.reject = rejectWithMsg("blocked: author not allowed to send events")
-
-	for _, opt := range rejOpts {
-		opt(s)
+		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
+			mode,
+			"blocked: the author of the event is not in the whitelist",
+			"blocked: the author of the event is in the blacklist",
+		)),
 	}
 	return s
-}
-
-type kindsSifter struct {
-	matchKind func(int) bool
-	mode      Mode
-	rejectorSetterEmbed
 }
 
 var (
@@ -104,6 +99,12 @@ var (
 	}
 )
 
+type kindsSifter struct {
+	matchKind func(int) bool
+	mode      Mode
+	reject    rejectionFn
+}
+
 func (s *kindsSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	matched := s.matchKind(input.Event.Kind)
 	if shouldAccept(matched, s.mode) {
@@ -120,28 +121,20 @@ func matchKindWithList(kinds []int) func(int) bool {
 	}
 }
 
-func Kinds(kinds []int, mode Mode, rejOpts ...rejectionOption) *kindsSifter {
+func Kinds(kinds []int, mode Mode, rejFn rejectionFn) *kindsSifter {
 	s := &kindsSifter{
 		matchKind: matchKindWithList(kinds),
 		mode:      mode,
-	}
-	s.reject = rejectWithMsg("blocked: event kind not allowed")
-
-	for _, opt := range rejOpts {
-		opt(s)
+		reject:    orDefaultRejFn(rejFn, RejectWithMsg("blocked: the kind of the event is not allowed")),
 	}
 	return s
 }
 
-func KindMatcher(matcher func(int) bool, mode Mode, rejOpts ...rejectionOption) *kindsSifter {
+func KindMatcher(matcher func(int) bool, mode Mode, rejFn rejectionFn) *kindsSifter {
 	s := &kindsSifter{
 		matchKind: matcher,
 		mode:      mode,
-	}
-	s.reject = rejectWithMsg("blocked: event kind not allowed")
-
-	for _, opt := range rejOpts {
-		opt(s)
+		reject:    orDefaultRejFn(rejFn, RejectWithMsg("blocked: the kind of the event is not allowed")),
 	}
 	return s
 }
@@ -150,7 +143,7 @@ type createdAtLimitSifter struct {
 	maxPastDelta   time.Duration
 	maxFutureDelta time.Duration
 	mode           Mode
-	rejectorSetterEmbed
+	reject         rejectionFn
 }
 
 func (s *createdAtLimitSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
@@ -167,16 +160,27 @@ func (s *createdAtLimitSifter) Sift(input *evsifter.Input) (*evsifter.Result, er
 	return s.reject(input), nil
 }
 
-func CreatedAtLimit(maxPastDelta, maxFutureDelta time.Duration, mode Mode, rejOpts ...rejectionOption) *createdAtLimitSifter {
+func CreatedAtLimit(maxPastDelta, maxFutureDelta time.Duration, mode Mode, rejFn rejectionFn) *createdAtLimitSifter {
 	s := &createdAtLimitSifter{
 		maxPastDelta:   maxPastDelta,
 		maxFutureDelta: maxFutureDelta,
 		mode:           mode,
-	}
-	s.reject = rejectWithMsg("blocked: event created_at not allowed")
-
-	for _, opt := range rejOpts {
-		opt(s)
+		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(mode,
+			fmt.Sprintf("invalid: event timestamp is out of the range: %s", stringCreatedAtRange(maxPastDelta, maxFutureDelta)),
+			fmt.Sprintf("blocked: event timestamp must be out of the range: %s", stringCreatedAtRange(maxPastDelta, maxFutureDelta)),
+		)),
 	}
 	return s
+}
+
+func stringCreatedAtRange(maxPastDelta, maxFutureDelta time.Duration) string {
+	left := "-∞"
+	if maxPastDelta != 0 {
+		left = maxFutureDelta.String() + " ago"
+	}
+	right := "+∞"
+	if maxFutureDelta != 0 {
+		right = maxFutureDelta.String() + " after"
+	}
+	return fmt.Sprintf("[%s, %s]", left, right)
 }

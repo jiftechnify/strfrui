@@ -113,6 +113,24 @@ func (i *Input) ShadowReject() (*Result, error) {
 	}, nil
 }
 
+// "Machine-readable prefixes" for rejection messages. Use them with BuildRejectMessage().
+const (
+	RejectReasonPrefixBlocked     = "blocked"
+	RejectReasonPrefixRateLimited = "rate-limited"
+	RejectReasonPrefixInvalid     = "invalid"
+	RejectReasonPrefixPoW         = "pow"
+	RejectReasonPrefixError       = "error"
+)
+
+// BuildRejectMessage builds a rejection message with a "machine-readable prefix".
+//
+// The message format is defined in [NIP-01].
+//
+// [NIP-01]: https://github.com/nostr-protocol/nips/blob/master/01.md#from-relay-to-client-sending-events-and-notices
+func BuildRejectMessage(prefix string, body string) string {
+	return prefix + ": " + body
+}
+
 // A Sifter decides whether accept or reject an event based on Input, the event data itself with context information.
 //
 // Sift should return either Result with an action to take on the event, or error if it couldn't process the input.

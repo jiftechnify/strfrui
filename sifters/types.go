@@ -25,16 +25,16 @@ func shouldAccept(matched bool, m Mode) bool {
 	}
 }
 
-type rejector func(*evsifter.Input) *evsifter.Result
+type rejectionFn func(*evsifter.Input) *evsifter.Result
 
-var shadowReject = func(input *evsifter.Input) *evsifter.Result {
+var ShadowReject = func(input *evsifter.Input) *evsifter.Result {
 	return &evsifter.Result{
 		ID:     input.Event.ID,
 		Action: evsifter.ActionShadowReject,
 	}
 }
 
-func rejectWithMsg(msg string) rejector {
+func RejectWithMsg(msg string) rejectionFn {
 	return func(input *evsifter.Input) *evsifter.Result {
 		return &evsifter.Result{
 			ID:     input.Event.ID,
@@ -44,26 +44,35 @@ func rejectWithMsg(msg string) rejector {
 	}
 }
 
-type rejectorSetter interface {
-	setRejector(rejector)
-}
-
-type rejectorSetterEmbed struct {
-	reject rejector
-}
-
-func (s *rejectorSetterEmbed) setRejector(r rejector) {
-	s.reject = r
-}
-
-type rejectionOption func(rejectorSetter)
-
-var WithShadowReject rejectionOption = func(s rejectorSetter) {
-	s.setRejector(shadowReject)
-}
-
-func WithRejectMessage(msg string) rejectionOption {
-	return func(s rejectorSetter) {
-		s.setRejector(rejectWithMsg(msg))
+func RejectWithMsgFromInput(getMsg func(*evsifter.Input) string) rejectionFn {
+	return func(input *evsifter.Input) *evsifter.Result {
+		return &evsifter.Result{
+			ID:     input.Event.ID,
+			Action: evsifter.ActionReject,
+			Msg:    getMsg(input),
+		}
 	}
+}
+
+func selectMsgByMode(mode Mode, msgAllow, msgDeny string) string {
+	var msg string
+	switch mode {
+	case Allow:
+		msg = msgAllow
+	case Deny:
+		msg = msgDeny
+	}
+	return msg
+}
+
+func rejectWithMsgPerMode(mode Mode, msgAllow, msgDeny string) rejectionFn {
+	msg := selectMsgByMode(mode, msgAllow, msgDeny)
+	return RejectWithMsg(msg)
+}
+
+func orDefaultRejFn(rej rejectionFn, defaultRej rejectionFn) rejectionFn {
+	if rej == nil {
+		return defaultRej
+	}
+	return rej
 }
