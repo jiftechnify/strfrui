@@ -22,7 +22,7 @@ func (s *filtersSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	return s.reject(input), nil
 }
 
-func Filters(filters []nostr.Filter, mode Mode, rejFn rejectionFn) *filtersSifter {
+func MatchesFilters(filters []nostr.Filter, mode Mode, rejFn rejectionFn) *filtersSifter {
 	s := &filtersSifter{
 		filters: nostr.Filters(filters),
 		mode:    mode,
@@ -69,7 +69,7 @@ func matchAuthorWithList(pubkeys []string) func(string) bool {
 	}
 }
 
-func Authors(authors []string, mode Mode, rejFn rejectionFn) *authorsSifter {
+func AuthorList(authors []string, mode Mode, rejFn rejectionFn) *authorsSifter {
 	s := &authorsSifter{
 		matchAuthor: matchAuthorWithList(authors),
 		mode:        mode,
@@ -130,7 +130,7 @@ func matchKindWithList(kinds []int) func(int) bool {
 	}
 }
 
-func Kinds(kinds []int, mode Mode, rejFn rejectionFn) *kindsSifter {
+func KindList(kinds []int, mode Mode, rejFn rejectionFn) *kindsSifter {
 	s := &kindsSifter{
 		matchKind: matchKindWithList(kinds),
 		mode:      mode,
@@ -139,48 +139,78 @@ func Kinds(kinds []int, mode Mode, rejFn rejectionFn) *kindsSifter {
 	return s
 }
 
-type createdAtLimitSifter struct {
-	maxPastDelta   time.Duration
-	maxFutureDelta time.Duration
-	mode           Mode
-	reject         rejectionFn
+type fakeableClock struct {
+	fakeNow time.Time
 }
 
-func (s *createdAtLimitSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	now := time.Now()
+var (
+	clock fakeableClock
+)
+
+func (c fakeableClock) now() time.Time {
+	if c.fakeNow.IsZero() {
+		return time.Now()
+	}
+	return c.fakeNow
+}
+
+func (c *fakeableClock) setFake(t time.Time) {
+	c.fakeNow = t
+}
+
+func (c *fakeableClock) reset() {
+	c.fakeNow = time.Time{}
+}
+
+type RelativeTimeRange struct {
+	maxPastDelta   time.Duration
+	maxFutureDelta time.Duration
+}
+
+func (r RelativeTimeRange) Contains(t time.Time) bool {
+	now := clock.now()
+
+	okPast := r.maxPastDelta == 0 || !t.Before(now.Add(-r.maxPastDelta))
+	okFuture := r.maxFutureDelta == 0 || !t.After(now.Add(r.maxFutureDelta))
+
+	return okPast && okFuture
+}
+
+func (r RelativeTimeRange) String() string {
+	left := "-∞"
+	if r.maxPastDelta != 0 {
+		left = r.maxFutureDelta.String() + " ago"
+	}
+	right := "+∞"
+	if r.maxFutureDelta != 0 {
+		right = r.maxFutureDelta.String() + " after"
+	}
+	return fmt.Sprintf("[%s, %s]", left, right)
+}
+
+type createdAtRangeSifter struct {
+	timeRange RelativeTimeRange
+	mode      Mode
+	reject    rejectionFn
+}
+
+func (s *createdAtRangeSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	createdAt := input.Event.CreatedAt.Time()
 
-	matchPast := s.maxPastDelta == 0 || !createdAt.Before(now.Add(-s.maxPastDelta))
-	matchFuture := s.maxFutureDelta == 0 || !createdAt.After(now.Add(s.maxFutureDelta))
-	matched := matchPast && matchFuture
-
-	if shouldAccept(matched, s.mode) {
+	if shouldAccept(s.timeRange.Contains(createdAt), s.mode) {
 		return input.Accept()
 	}
 	return s.reject(input), nil
 }
 
-func CreatedAtLimit(maxPastDelta, maxFutureDelta time.Duration, mode Mode, rejFn rejectionFn) *createdAtLimitSifter {
-	s := &createdAtLimitSifter{
-		maxPastDelta:   maxPastDelta,
-		maxFutureDelta: maxFutureDelta,
-		mode:           mode,
+func CreatedAtRange(timeRange RelativeTimeRange, mode Mode, rejFn rejectionFn) *createdAtRangeSifter {
+	s := &createdAtRangeSifter{
+		timeRange: timeRange,
+		mode:      mode,
 		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(mode,
-			fmt.Sprintf("invalid: event timestamp is out of the range: %s", stringCreatedAtRange(maxPastDelta, maxFutureDelta)),
-			fmt.Sprintf("blocked: event timestamp must be out of the range: %s", stringCreatedAtRange(maxPastDelta, maxFutureDelta)),
+			fmt.Sprintf("invalid: event timestamp is out of the range: %v", timeRange),
+			fmt.Sprintf("blocked: event timestamp must be out of the range: %v", timeRange),
 		)),
 	}
 	return s
-}
-
-func stringCreatedAtRange(maxPastDelta, maxFutureDelta time.Duration) string {
-	left := "-∞"
-	if maxPastDelta != 0 {
-		left = maxFutureDelta.String() + " ago"
-	}
-	right := "+∞"
-	if maxFutureDelta != 0 {
-		right = maxFutureDelta.String() + " after"
-	}
-	return fmt.Sprintf("[%s, %s]", left, right)
 }

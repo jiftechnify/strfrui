@@ -18,7 +18,7 @@ type sourceIPSifter struct {
 }
 
 func (s *sourceIPSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	if input.SourceType.IsEndUser() {
+	if !input.SourceType.IsEndUser() {
 		return input.Accept()
 	}
 

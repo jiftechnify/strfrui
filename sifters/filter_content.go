@@ -33,7 +33,7 @@ func ContentMatcher(matcher func(string) bool, mode Mode, rejFn rejectionFn) *ma
 	return s
 }
 
-func matchContentWithWordList(words []string) func(string) bool {
+func matchContentWithWordsAny(words []string) func(string) bool {
 	return func(pubkey string) bool {
 		for _, word := range words {
 			if strings.Contains(pubkey, word) {
@@ -44,20 +44,44 @@ func matchContentWithWordList(words []string) func(string) bool {
 	}
 }
 
-func WordList(words []string, mode Mode, rejFn rejectionFn) *matchContentSifter {
+func ContentHasAnyWord(words []string, mode Mode, rejFn rejectionFn) *matchContentSifter {
 	s := &matchContentSifter{
-		matchContent: matchContentWithWordList(words),
+		matchContent: matchContentWithWordsAny(words),
 		mode:         mode,
 		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
 			mode,
-			"blocked: content must have keywords to be accepted",
-			"blocked: content has forbidden words",
+			"blocked: content must have one of keywords to be accepted",
+			"blocked: content has one of forbidden words",
 		)),
 	}
 	return s
 }
 
-func matchContentWithRegexps(regexps []*regexp.Regexp) func(string) bool {
+func matchContentWithWordsAll(words []string) func(string) bool {
+	return func(pubkey string) bool {
+		for _, word := range words {
+			if !strings.Contains(pubkey, word) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func ContentHasAllWords(words []string, mode Mode, rejFn rejectionFn) *matchContentSifter {
+	s := &matchContentSifter{
+		matchContent: matchContentWithWordsAll(words),
+		mode:         mode,
+		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
+			mode,
+			"blocked: content must have all keywords to be accepted",
+			"blocked: content has all of forbidden words",
+		)),
+	}
+	return s
+}
+
+func matchContentWithRegexpsAny(regexps []*regexp.Regexp) func(string) bool {
 	return func(content string) bool {
 		for _, r := range regexps {
 			if r.MatchString(content) {
@@ -68,14 +92,38 @@ func matchContentWithRegexps(regexps []*regexp.Regexp) func(string) bool {
 	}
 }
 
-func Regexps(regexps []*regexp.Regexp, mode Mode, rejFn rejectionFn) *matchContentSifter {
+func ContentMatchesAnyRegexp(regexps []*regexp.Regexp, mode Mode, rejFn rejectionFn) *matchContentSifter {
 	s := &matchContentSifter{
-		matchContent: matchContentWithRegexps(regexps),
+		matchContent: matchContentWithRegexpsAny(regexps),
 		mode:         mode,
 		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
 			mode,
-			"blocked: content matches forbidden patterns",
-			"blocked: content must match key-patterns to be accepted",
+			"blocked: content must match one of key-patterns to be accepted",
+			"blocked: content matches one of forbidden patterns",
+		)),
+	}
+	return s
+}
+
+func matchContentWithRegexpsAll(regexps []*regexp.Regexp) func(string) bool {
+	return func(content string) bool {
+		for _, r := range regexps {
+			if !r.MatchString(content) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func ContentMatchesAllRegexps(regexps []*regexp.Regexp, mode Mode, rejFn rejectionFn) *matchContentSifter {
+	s := &matchContentSifter{
+		matchContent: matchContentWithRegexpsAll(regexps),
+		mode:         mode,
+		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
+			mode,
+			"blocked: content must match all of key-patterns to be accepted",
+			"blocked: content matches all of forbidden patterns",
 		)),
 	}
 	return s

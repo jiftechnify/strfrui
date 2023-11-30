@@ -68,7 +68,7 @@ func (s *oneOfSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	return s.reject(input), nil
 }
 
-func OneOf(rejFn rejectionFn, ss ...evsifter.Sifter) *oneOfSifter {
+func OneOf(ss []evsifter.Sifter, rejFn rejectionFn) *oneOfSifter {
 	return &oneOfSifter{
 		children: assignDefaultNamesToSifters(ss...),
 		reject:   orDefaultRejFn(rejFn, RejectWithMsg("blocked: any of sub-sifters didn't accept the evnt")),
