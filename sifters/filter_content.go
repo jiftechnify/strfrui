@@ -7,17 +7,30 @@ import (
 	evsifter "github.com/jiftechnify/strfry-evsifter"
 )
 
-type wordsSifter struct {
-	matchWithWords func(string) bool
-	mode           Mode
-	reject         rejectionFn
+type matchContentSifter struct {
+	matchContent func(string) bool
+	mode         Mode
+	reject       rejectionFn
 }
 
-func (s *wordsSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	if shouldAccept(s.matchWithWords(input.Event.Content), s.mode) {
+func (s *matchContentSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
+	if shouldAccept(s.matchContent(input.Event.Content), s.mode) {
 		return input.Accept()
 	}
 	return s.reject(input), nil
+}
+
+func ContentMatcher(matcher func(string) bool, mode Mode, rejFn rejectionFn) *matchContentSifter {
+	s := &matchContentSifter{
+		matchContent: matcher,
+		mode:         mode,
+		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
+			mode,
+			"blocked: content must obey some rules to be accepted",
+			"blocked: content conflicts with some rules",
+		)),
+	}
+	return s
 }
 
 func matchContentWithWordList(words []string) func(string) bool {
@@ -31,10 +44,10 @@ func matchContentWithWordList(words []string) func(string) bool {
 	}
 }
 
-func WordList(words []string, mode Mode, rejFn rejectionFn) *wordsSifter {
-	s := &wordsSifter{
-		matchWithWords: matchContentWithWordList(words),
-		mode:           mode,
+func WordList(words []string, mode Mode, rejFn rejectionFn) *matchContentSifter {
+	s := &matchContentSifter{
+		matchContent: matchContentWithWordList(words),
+		mode:         mode,
 		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
 			mode,
 			"blocked: content must have keywords to be accepted",
@@ -44,43 +57,21 @@ func WordList(words []string, mode Mode, rejFn rejectionFn) *wordsSifter {
 	return s
 }
 
-func WordMatcher(matcher func(string) bool, mode Mode, rejFn rejectionFn) *wordsSifter {
-	s := &wordsSifter{
-		matchWithWords: matcher,
-		mode:           mode,
-		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
-			mode,
-			"blocked: content must have keywords to be accepted",
-			"blocked: content has forbidden words",
-		)),
-	}
-	return s
-}
-
-type regexpsSifter struct {
-	regexps []*regexp.Regexp
-	mode    Mode
-	reject  rejectionFn
-}
-
-func (s *regexpsSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	matched := false
-	for _, r := range s.regexps {
-		if r.MatchString(input.Event.Content) {
-			matched = true
-			break
+func matchContentWithRegexps(regexps []*regexp.Regexp) func(string) bool {
+	return func(content string) bool {
+		for _, r := range regexps {
+			if r.MatchString(content) {
+				return true
+			}
 		}
+		return false
 	}
-	if shouldAccept(matched, s.mode) {
-		return input.Accept()
-	}
-	return s.reject(input), nil
 }
 
-func Regexps(regexps []*regexp.Regexp, mode Mode, rejFn rejectionFn) *regexpsSifter {
-	s := &regexpsSifter{
-		regexps: regexps,
-		mode:    mode,
+func Regexps(regexps []*regexp.Regexp, mode Mode, rejFn rejectionFn) *matchContentSifter {
+	s := &matchContentSifter{
+		matchContent: matchContentWithRegexps(regexps),
+		mode:         mode,
 		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
 			mode,
 			"blocked: content matches forbidden patterns",

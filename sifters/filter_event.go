@@ -48,6 +48,19 @@ func (s *authorsSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	return s.reject(input), nil
 }
 
+func AuthorMatcher(matcher func(string) bool, mode Mode, rejFn rejectionFn) *authorsSifter {
+	s := &authorsSifter{
+		matchAuthor: matcher,
+		mode:        mode,
+		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
+			mode,
+			"blocked: the author of the event is not in the whitelist",
+			"blocked: the author of the event is in the blacklist",
+		)),
+	}
+	return s
+}
+
 func matchAuthorWithList(pubkeys []string) func(string) bool {
 	m := sliceToSet(pubkeys)
 	return func(pubkey string) bool {
@@ -64,19 +77,6 @@ func Authors(authors []string, mode Mode, rejFn rejectionFn) *authorsSifter {
 			mode,
 			"blocked: author is not int the whitelist",
 			"blocked: author is in the blacklist",
-		)),
-	}
-	return s
-}
-
-func AuthorMatcher(matcher func(string) bool, mode Mode, rejFn rejectionFn) *authorsSifter {
-	s := &authorsSifter{
-		matchAuthor: matcher,
-		mode:        mode,
-		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
-			mode,
-			"blocked: the author of the event is not in the whitelist",
-			"blocked: the author of the event is in the blacklist",
 		)),
 	}
 	return s
@@ -113,6 +113,15 @@ func (s *kindsSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	return s.reject(input), nil
 }
 
+func KindMatcher(matcher func(int) bool, mode Mode, rejFn rejectionFn) *kindsSifter {
+	s := &kindsSifter{
+		matchKind: matcher,
+		mode:      mode,
+		reject:    orDefaultRejFn(rejFn, RejectWithMsg("blocked: the kind of the event is not allowed")),
+	}
+	return s
+}
+
 func matchKindWithList(kinds []int) func(int) bool {
 	m := sliceToSet(kinds)
 	return func(kind int) bool {
@@ -124,15 +133,6 @@ func matchKindWithList(kinds []int) func(int) bool {
 func Kinds(kinds []int, mode Mode, rejFn rejectionFn) *kindsSifter {
 	s := &kindsSifter{
 		matchKind: matchKindWithList(kinds),
-		mode:      mode,
-		reject:    orDefaultRejFn(rejFn, RejectWithMsg("blocked: the kind of the event is not allowed")),
-	}
-	return s
-}
-
-func KindMatcher(matcher func(int) bool, mode Mode, rejFn rejectionFn) *kindsSifter {
-	s := &kindsSifter{
-		matchKind: matcher,
 		mode:      mode,
 		reject:    orDefaultRejFn(rejFn, RejectWithMsg("blocked: the kind of the event is not allowed")),
 	}

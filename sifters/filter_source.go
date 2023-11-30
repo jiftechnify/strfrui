@@ -37,6 +37,20 @@ func (s *sourceIPSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	return s.reject(input), nil
 }
 
+func SourceIPMatcher(matcher func(netip.Addr) bool, mode Mode, modeForUnknownSource Mode, rejFn rejectionFn) *sourceIPSifter {
+	s := &sourceIPSifter{
+		matchWithSourceIP:    matcher,
+		mode:                 mode,
+		modeForUnknownSource: modeForUnknownSource,
+		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
+			mode,
+			"blocked: source IP is not in the whitelist",
+			"blocked: source IP is in the blacklist",
+		)),
+	}
+	return s
+}
+
 func matchWithIPPrefixList(prefixes []netip.Prefix) func(netip.Addr) bool {
 	// sort prefixes by length of prefix, in ascending order
 	// so that shorter prefixes (= broader range of addr) are matched first
@@ -56,20 +70,6 @@ func matchWithIPPrefixList(prefixes []netip.Prefix) func(netip.Addr) bool {
 func SourceIPPrefixList(ipPrefixes []netip.Prefix, mode Mode, modeForUnknownSource Mode, rejFn rejectionFn) *sourceIPSifter {
 	s := &sourceIPSifter{
 		matchWithSourceIP:    matchWithIPPrefixList(ipPrefixes),
-		mode:                 mode,
-		modeForUnknownSource: modeForUnknownSource,
-		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
-			mode,
-			"blocked: source IP is not in the whitelist",
-			"blocked: source IP is in the blacklist",
-		)),
-	}
-	return s
-}
-
-func SourceIPMatcher(matcher func(netip.Addr) bool, mode Mode, modeForUnknownSource Mode, rejFn rejectionFn) *sourceIPSifter {
-	s := &sourceIPSifter{
-		matchWithSourceIP:    matcher,
 		mode:                 mode,
 		modeForUnknownSource: modeForUnknownSource,
 		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
