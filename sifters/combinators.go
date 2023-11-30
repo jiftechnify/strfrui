@@ -7,7 +7,7 @@ import (
 )
 
 type pipelineSifter struct {
-	sifters []*moddedSifter
+	children []*moddedSifter
 }
 
 func (s *pipelineSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
@@ -15,7 +15,7 @@ func (s *pipelineSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 		res *evsifter.Result
 		err error
 	)
-	for _, child := range s.sifters {
+	for _, child := range s.children {
 		res, err = child.Sift(input)
 
 		if err != nil {
@@ -37,22 +37,41 @@ func (s *pipelineSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	return res, nil
 }
 
-func Pipeline(name string, ss ...evsifter.Sifter) *pipelineSifter {
-	modded := make([]*moddedSifter, 0, len(ss))
-	for i, s := range ss {
-		mod, ok := s.(*moddedSifter)
-		if !ok {
-			modded = append(modded, WithMod(s).Label(fmt.Sprintf("sifter #%d", i)))
-			continue
-		}
-		if ok && mod.label == "" {
-			modded = append(modded, mod.Label(fmt.Sprintf("sifter #%d", i)))
-			continue
-		}
-		modded = append(modded, mod)
-	}
+func Pipeline(ss ...evsifter.Sifter) *pipelineSifter {
 	return &pipelineSifter{
-		sifters: modded,
+		children: assignDefaultNamesToSifters(ss...),
+	}
+}
+
+type oneOfSifter struct {
+	children []*moddedSifter
+	reject   rejectionFn
+}
+
+func (s *oneOfSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
+	var (
+		res *evsifter.Result
+		err error
+	)
+	for _, child := range s.children {
+		res, err = child.Sift(input)
+
+		if err != nil {
+			return nil, err
+		}
+		if res.Action == evsifter.ActionAccept {
+			// accept ealry if one of the children accepts the event
+			return res, nil
+		}
+	}
+	// reject if any children didn't accept the event
+	return s.reject(input), nil
+}
+
+func OneOf(rejFn rejectionFn, ss ...evsifter.Sifter) *oneOfSifter {
+	return &oneOfSifter{
+		children: assignDefaultNamesToSifters(ss...),
+		reject:   orDefaultRejFn(rejFn, RejectWithMsg("blocked: any of sub-sifters didn't accept the evnt")),
 	}
 }
 
@@ -88,4 +107,21 @@ func (s *moddedSifter) Label(label string) *moddedSifter {
 func (s *moddedSifter) AcceptEarly() *moddedSifter {
 	s.acceptEarly = true
 	return s
+}
+
+func assignDefaultNamesToSifters(ss ...evsifter.Sifter) []*moddedSifter {
+	modded := make([]*moddedSifter, 0, len(ss))
+	for i, s := range ss {
+		mod, ok := s.(*moddedSifter)
+		if !ok {
+			modded = append(modded, WithMod(s).Label(fmt.Sprintf("sifter #%d", i)))
+			continue
+		}
+		if ok && mod.label == "" {
+			modded = append(modded, mod.Label(fmt.Sprintf("sifter #%d", i)))
+			continue
+		}
+		modded = append(modded, mod)
+	}
+	return modded
 }
