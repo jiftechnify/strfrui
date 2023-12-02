@@ -10,7 +10,43 @@ import (
 	"github.com/throttled/throttled/v2/store/memstore"
 )
 
+type Rate throttled.Rate
+
+// PerSec represents a number of requests per second.
+func PerSec(n int) Rate { return Rate(throttled.PerSec(n)) }
+
+// PerMin represents a number of requests per minute.
+func PerMin(n int) Rate { return Rate(throttled.PerMin(n)) }
+
+// PerHour represents a number of requests per hour.
+func PerHour(n int) Rate { return Rate(throttled.PerHour(n)) }
+
+// PerDay represents a number of requests per day.
+func PerDay(n int) Rate { return Rate(throttled.PerDay(n)) }
+
+// PerDuration represents a number of requests per provided duration.
+func PerDuration(n int, d time.Duration) Rate { return Rate(throttled.PerDuration(n, d)) }
+
+type RateQuota struct {
+	MaxRate  Rate
+	MaxBurst int
+}
+
+func (q RateQuota) toThrottled() throttled.RateQuota {
+	return throttled.RateQuota{
+		MaxRate:  throttled.Rate(q.MaxRate),
+		MaxBurst: q.MaxBurst,
+	}
+}
+
 type rateLimitKeyDeriveFn func(*evsifter.Input) (shouldLimit bool, key string)
+
+type rateLimitUserKey int
+
+const (
+	RateLimitByIPAddr rateLimitUserKey = iota + 1
+	RateLimitByPubKey
+)
 
 type rateLimitSifter struct {
 	rateLimiter throttled.RateLimiterCtx
@@ -37,16 +73,9 @@ func (s *rateLimitSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) 
 	return input.Accept()
 }
 
-type rateLimitUserKey int
-
-const (
-	RateLimitByIPAddr rateLimitUserKey = iota + 1
-	RateLimitByPubKey
-)
-
-func RateLimitPerUser(quota throttled.RateQuota, userKey rateLimitUserKey, exclude func(*evsifter.Input) bool, rejFn rejectionFn) *rateLimitSifter {
+func RateLimitPerUser(quota RateQuota, userKey rateLimitUserKey, exclude func(*evsifter.Input) bool, rejFn rejectionFn) *rateLimitSifter {
 	store, _ := memstore.NewCtx(65536)
-	rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, quota)
+	rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, quota.toThrottled())
 
 	s := &rateLimitSifter{
 		rateLimiter: rateLimiter,
@@ -103,9 +132,27 @@ func (s *multiRateLimitSifter) Sift(input *evsifter.Input) (*evsifter.Result, er
 	return input.Accept()
 }
 
-type RateLimitQuotaPerKind struct {
-	MatchKind func(int) bool
-	Quota     throttled.RateQuota
+type rateLimitQuotaPerKind struct {
+	matchKind func(int) bool
+	quota     RateQuota
+}
+
+func RateLimitQuotaForKindList(kinds []int, quota RateQuota) rateLimitQuotaPerKind {
+	kindSet := sliceToSet(kinds)
+	return rateLimitQuotaPerKind{
+		matchKind: func(kind int) bool {
+			_, ok := kindSet[kind]
+			return ok
+		},
+		quota: quota,
+	}
+}
+
+func RateLimitQuotaForMatchingKinds(matcher func(int) bool, quota RateQuota) rateLimitQuotaPerKind {
+	return rateLimitQuotaPerKind{
+		matchKind: matcher,
+		quota:     quota,
+	}
 }
 
 type rateLimiterPerKind struct {
@@ -113,13 +160,13 @@ type rateLimiterPerKind struct {
 	rateLimiter throttled.RateLimiterCtx
 }
 
-func RateLimitPerUserAndKind(quotas []RateLimitQuotaPerKind, userKey rateLimitUserKey, exclude func(*evsifter.Input) bool, rejFn rejectionFn) *multiRateLimitSifter {
+func RateLimitPerUserAndKind(quotas []rateLimitQuotaPerKind, userKey rateLimitUserKey, exclude func(*evsifter.Input) bool, rejFn rejectionFn) *multiRateLimitSifter {
 	store, _ := memstore.NewCtx(65536)
 	limiters := make([]rateLimiterPerKind, 0, len(quotas))
 	for _, quota := range quotas {
-		rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, quota.Quota)
+		rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, quota.quota.toThrottled())
 		limiters = append(limiters, rateLimiterPerKind{
-			matchKind:   quota.MatchKind,
+			matchKind:   quota.matchKind,
 			rateLimiter: rateLimiter,
 		})
 	}
