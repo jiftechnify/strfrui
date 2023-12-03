@@ -39,13 +39,13 @@ func (s *pipelineSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 
 func Pipeline(ss ...evsifter.Sifter) *pipelineSifter {
 	return &pipelineSifter{
-		children: assignDefaultNamesToSifters(ss...),
+		children: assignDefaultLabelsToSifters(ss...),
 	}
 }
 
 type oneOfSifter struct {
 	children []*moddedSifter
-	reject   rejectionFn
+	reject   RejectionFn
 }
 
 func (s *oneOfSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
@@ -68,10 +68,25 @@ func (s *oneOfSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	return s.reject(input), nil
 }
 
-func OneOf(ss []evsifter.Sifter, rejFn rejectionFn) *oneOfSifter {
+func (s *oneOfSifter) ShadowReject() *oneOfSifter {
+	s.reject = ShadowReject
+	return s
+}
+
+func (s *oneOfSifter) RejectWithMsg(msg string) *oneOfSifter {
+	s.reject = RejectWithMsg(msg)
+	return s
+}
+
+func (s *oneOfSifter) RejectWithMsgFromInput(getMsg func(*evsifter.Input) string) *oneOfSifter {
+	s.reject = RejectWithMsgFromInput(getMsg)
+	return s
+}
+
+func OneOf(ss []evsifter.Sifter) *oneOfSifter {
 	return &oneOfSifter{
-		children: assignDefaultNamesToSifters(ss...),
-		reject:   orDefaultRejFn(rejFn, RejectWithMsg("blocked: any of sub-sifters didn't accept the evnt")),
+		children: assignDefaultLabelsToSifters(ss...),
+		reject:   RejectWithMsg("blocked: any of sub-sifters didn't accept the evnt"),
 	}
 }
 
@@ -109,7 +124,7 @@ func (s *moddedSifter) AcceptEarly() *moddedSifter {
 	return s
 }
 
-func assignDefaultNamesToSifters(ss ...evsifter.Sifter) []*moddedSifter {
+func assignDefaultLabelsToSifters(ss ...evsifter.Sifter) []*moddedSifter {
 	modded := make([]*moddedSifter, 0, len(ss))
 	for i, s := range ss {
 		mod, ok := s.(*moddedSifter)

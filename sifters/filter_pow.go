@@ -6,11 +6,6 @@ import (
 	evsifter "github.com/jiftechnify/strfry-evsifter"
 )
 
-type powMinDifficultySifter struct {
-	min    uint
-	reject rejectionFn
-}
-
 var nibbleToLzs = map[rune]uint{
 	'0': 4,
 	'1': 3,
@@ -34,21 +29,14 @@ func leadingZerosOfEventID(id string) (uint, error) {
 	return res, nil
 }
 
-func (s *powMinDifficultySifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	difficulty, err := leadingZerosOfEventID(input.Event.ID)
-	if err != nil {
-		return nil, err
+func PoWMinDifficulty(minDifficulty uint) *sifterUnit {
+	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+		difficulty, err := leadingZerosOfEventID(input.Event.ID)
+		if err != nil {
+			return inputAlwaysReject, err
+		}
+		return matchResultFromBool(difficulty >= minDifficulty), nil
 	}
-	if difficulty >= s.min {
-		return input.Accept()
-	}
-	return s.reject(input), nil
-}
-
-func PoWMinDifficulty(minDifficulty uint, rejFn rejectionFn) *powMinDifficultySifter {
-	s := &powMinDifficultySifter{
-		min:    max(min(minDifficulty, 256), 1),
-		reject: orDefaultRejFn(rejFn, RejectWithMsg(fmt.Sprintf("pow: difficulty is less than %d", minDifficulty))),
-	}
-	return s
+	defaultRejFn := RejectWithMsg(fmt.Sprintf("pow: difficulty is less than %d", minDifficulty))
+	return newSifterUnit(matchInput, Allow, defaultRejFn)
 }

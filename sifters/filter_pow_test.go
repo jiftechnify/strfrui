@@ -9,7 +9,7 @@ import (
 
 func TestPoWMinDifficulty(t *testing.T) {
 	t.Run("accepts if PoW difficulty is greater than or equal to the threshold", func(t *testing.T) {
-		s := PoWMinDifficulty(33, nil)
+		s := PoWMinDifficulty(33)
 
 		evs := []*nostr.Event{
 			{ID: "0000000048ba5812c644dac2f8d53d6ef9b7f143d809a141559e486328ec94af"}, // diff: 33
@@ -28,7 +28,7 @@ func TestPoWMinDifficulty(t *testing.T) {
 	})
 
 	t.Run("rejects if PoW difficulty is less than the threshold", func(t *testing.T) {
-		s := PoWMinDifficulty(33, nil)
+		s := PoWMinDifficulty(33)
 
 		evs := []*nostr.Event{
 			{ID: "afd8949610b42451fb99675ace8fa222d436db48643b69241b00954c8a89f4c7"}, // diff: 0

@@ -10,45 +10,28 @@ import (
 	evsifter "github.com/jiftechnify/strfry-evsifter"
 )
 
-type sourceIPSifter struct {
-	matchWithSourceIP    func(netip.Addr) bool
-	mode                 Mode
-	modeForUnknownSource Mode
-	reject               rejectionFn
-}
-
-func (s *sourceIPSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	if !input.SourceType.IsEndUser() {
-		return input.Accept()
-	}
-
-	addr, err := netip.ParseAddr(input.SourceInfo)
-	if err != nil {
-		log.Printf("sourceIPSifter: failed to parse source IP addr (%s): %v", input.SourceInfo, err)
-		if shouldAccept(true, s.modeForUnknownSource) {
-			return input.Accept()
+func SourceIPMatcher(matcher func(netip.Addr) bool, mode Mode, modeForUnknownSource Mode) *sifterUnit {
+	matchInput := func(i *evsifter.Input) (inputMatchResult, error) {
+		if !i.SourceType.IsEndUser() {
+			return inputAlwaysAccept, nil
 		}
-		return input.Reject("blocked: this relay blocks events from unknown sources")
-	}
+		addr, err := netip.ParseAddr(i.SourceInfo)
+		if err != nil {
+			log.Printf("sourceIPMatcher: failed to parse source IP addr (%s): %v", i.SourceInfo, err)
+			if modeForUnknownSource == Allow {
+				return inputAlwaysAccept, nil
+			}
+			return inputAlwaysReject, nil
+		}
 
-	if shouldAccept(s.matchWithSourceIP(addr), s.mode) {
-		return input.Accept()
+		return matchResultFromBool(matcher(addr)), nil
 	}
-	return s.reject(input), nil
-}
-
-func SourceIPMatcher(matcher func(netip.Addr) bool, mode Mode, modeForUnknownSource Mode, rejFn rejectionFn) *sourceIPSifter {
-	s := &sourceIPSifter{
-		matchWithSourceIP:    matcher,
-		mode:                 mode,
-		modeForUnknownSource: modeForUnknownSource,
-		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
-			mode,
-			"blocked: source IP is not in the whitelist",
-			"blocked: source IP is in the blacklist",
-		)),
-	}
-	return s
+	defaultRejFn := rejectWithMsgPerMode(
+		mode,
+		"blocked: source IP is not in the whitelist",
+		"blocked: source IP is in the blacklist",
+	)
+	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
 func matchWithIPPrefixList(prefixes []netip.Prefix) func(netip.Addr) bool {
@@ -67,18 +50,8 @@ func matchWithIPPrefixList(prefixes []netip.Prefix) func(netip.Addr) bool {
 	}
 }
 
-func SourceIPPrefixList(ipPrefixes []netip.Prefix, mode Mode, modeForUnknownSource Mode, rejFn rejectionFn) *sourceIPSifter {
-	s := &sourceIPSifter{
-		matchWithSourceIP:    matchWithIPPrefixList(ipPrefixes),
-		mode:                 mode,
-		modeForUnknownSource: modeForUnknownSource,
-		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
-			mode,
-			"blocked: source IP is not in the whitelist",
-			"blocked: source IP is in the blacklist",
-		)),
-	}
-	return s
+func SourceIPPrefixList(ipPrefixes []netip.Prefix, mode Mode, modeForUnknownSource Mode) *sifterUnit {
+	return SourceIPMatcher(matchWithIPPrefixList(ipPrefixes), mode, modeForUnknownSource)
 }
 
 func ParseStringIPList(strIPs []string) ([]netip.Prefix, error) {

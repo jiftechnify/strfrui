@@ -6,9 +6,141 @@ import (
 	"time"
 
 	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfry-evsifter/sifters/internal/utils"
 	"github.com/throttled/throttled/v2"
 	"github.com/throttled/throttled/v2/store/memstore"
 )
+
+type rateLimitUserKey int
+
+const (
+	RateLimitByIPAddr rateLimitUserKey = iota + 1
+	RateLimitByPubKey
+)
+
+type selectRateLimiterFn func(*evsifter.Input) throttled.RateLimiterCtx
+type rateLimitKeyDeriveFn func(*evsifter.Input) (shouldLimit bool, key string)
+
+type rateLimitSifterUnit struct {
+	selectLimiter  selectRateLimiterFn
+	deriveLimitKey rateLimitKeyDeriveFn
+	exclude        func(*evsifter.Input) bool
+	reject         RejectionFn
+}
+
+func (s *rateLimitSifterUnit) Sift(input *evsifter.Input) (*evsifter.Result, error) {
+	if s.exclude(input) {
+		return input.Accept()
+	}
+	shouldLimit, limitKey := s.deriveLimitKey(input)
+	if !shouldLimit {
+		return input.Accept()
+	}
+	rateLimiter := s.selectLimiter(input)
+	if rateLimiter == nil {
+		return input.Accept()
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	limited, _, err := rateLimiter.RateLimitCtx(ctx, limitKey, 1)
+	if err != nil {
+		return nil, err
+	}
+	if limited {
+		return s.reject(input), nil
+	}
+	return input.Accept()
+}
+
+func (s *rateLimitSifterUnit) Exclude(exclude func(*evsifter.Input) bool) *rateLimitSifterUnit {
+	s.exclude = exclude
+	return s
+}
+
+func (s *rateLimitSifterUnit) ShadowReject() *rateLimitSifterUnit {
+	s.reject = ShadowReject
+	return s
+}
+
+func (s *rateLimitSifterUnit) RejectWithMsg(msg string) *rateLimitSifterUnit {
+	s.reject = RejectWithMsg(msg)
+	return s
+}
+
+func (s *rateLimitSifterUnit) RejectWithMsgFromInput(getMsg func(*evsifter.Input) string) *rateLimitSifterUnit {
+	s.reject = RejectWithMsgFromInput(getMsg)
+	return s
+}
+
+func newRateLimitSifterUnit(selectLimiter selectRateLimiterFn, deriveLimitKey rateLimitKeyDeriveFn) *rateLimitSifterUnit {
+	return &rateLimitSifterUnit{
+		selectLimiter:  selectLimiter,
+		deriveLimitKey: deriveLimitKey,
+		exclude:        func(i *evsifter.Input) bool { return false },
+		reject:         RejectWithMsg("rate-limited: rate limit exceeded"),
+	}
+}
+
+func RateLimitPerUser(quota RateQuota, userKey rateLimitUserKey) *rateLimitSifterUnit {
+	store, _ := memstore.NewCtx(65536)
+	rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, quota.toThrottled())
+
+	selectLimiter := func(_ *evsifter.Input) throttled.RateLimiterCtx { return rateLimiter }
+	deriveLimitKey := func(input *evsifter.Input) (bool, string) {
+		if !input.SourceType.IsEndUser() {
+			return false, ""
+		}
+		switch userKey {
+		case RateLimitByIPAddr:
+			return true, input.SourceInfo
+		case RateLimitByPubKey:
+			return true, input.Event.PubKey
+		default:
+			return false, ""
+		}
+	}
+	return newRateLimitSifterUnit(selectLimiter, deriveLimitKey)
+}
+
+// rate-limiting event sifter with variable quotas per conditions
+// if no quota matches, the event is accepted
+func RateLimitPerUserAndKind(quotas []rateLimitQuotaPerKind, userKey rateLimitUserKey) *rateLimitSifterUnit {
+	store, _ := memstore.NewCtx(65536)
+	limiters := make([]rateLimiterPerKind, 0, len(quotas))
+	for _, quota := range quotas {
+		rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, quota.quota.toThrottled())
+		limiters = append(limiters, rateLimiterPerKind{
+			matchKind:   quota.matchKind,
+			rateLimiter: rateLimiter,
+		})
+	}
+
+	selectRateLimiter := func(input *evsifter.Input) throttled.RateLimiterCtx {
+		for _, limiter := range limiters {
+			if limiter.matchKind(input.Event.Kind) {
+				return limiter.rateLimiter
+			}
+		}
+		return nil
+	}
+	deriveLimitKey := func(input *evsifter.Input) (bool, string) {
+		if !input.SourceType.IsEndUser() {
+			return false, ""
+		}
+		kind := input.Event.Kind
+		switch userKey {
+		case RateLimitByIPAddr:
+			return true, fmt.Sprintf("%s/%d", input.SourceInfo, kind)
+		case RateLimitByPubKey:
+			return true, fmt.Sprintf("%s/%d", input.Event.PubKey, kind)
+		default:
+			return false, ""
+		}
+	}
+	return newRateLimitSifterUnit(selectRateLimiter, deriveLimitKey)
+}
 
 type Rate throttled.Rate
 
@@ -39,106 +171,13 @@ func (q RateQuota) toThrottled() throttled.RateQuota {
 	}
 }
 
-type rateLimitKeyDeriveFn func(*evsifter.Input) (shouldLimit bool, key string)
-
-type rateLimitUserKey int
-
-const (
-	RateLimitByIPAddr rateLimitUserKey = iota + 1
-	RateLimitByPubKey
-)
-
-type rateLimitSifter struct {
-	rateLimiter throttled.RateLimiterCtx
-	getLimitKey rateLimitKeyDeriveFn
-	reject      rejectionFn
-}
-
-func (s *rateLimitSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	shouldLimit, limitKey := s.getLimitKey(input)
-	if !shouldLimit {
-		return input.Accept()
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	limited, _, err := s.rateLimiter.RateLimitCtx(ctx, limitKey, 1)
-	if err != nil {
-		return nil, err
-	}
-	if limited {
-		return s.reject(input), nil
-	}
-	return input.Accept()
-}
-
-func RateLimitPerUser(quota RateQuota, userKey rateLimitUserKey, exclude func(*evsifter.Input) bool, rejFn rejectionFn) *rateLimitSifter {
-	store, _ := memstore.NewCtx(65536)
-	rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, quota.toThrottled())
-
-	s := &rateLimitSifter{
-		rateLimiter: rateLimiter,
-		getLimitKey: func(input *evsifter.Input) (bool, string) {
-			if !input.SourceType.IsEndUser() {
-				return false, ""
-			}
-			if exclude != nil && exclude(input) {
-				return false, ""
-			}
-
-			switch userKey {
-			case RateLimitByIPAddr:
-				return true, input.SourceInfo
-			case RateLimitByPubKey:
-				return true, input.Event.PubKey
-			default:
-				return false, ""
-			}
-		},
-		reject: orDefaultRejFn(rejFn, RejectWithMsg("rate-limited: rate limit exceeded")),
-	}
-	return s
-}
-
-// rate-limiting event sifter with variable quotas per conditions
-// if no quota matches, the event is accepted
-type multiRateLimitSifter struct {
-	selectRateLimiter func(*evsifter.Input) throttled.RateLimiterCtx
-	getLimitKey       rateLimitKeyDeriveFn
-	reject            rejectionFn
-}
-
-func (s *multiRateLimitSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	shouldLimit, limitKey := s.getLimitKey(input)
-	if !shouldLimit {
-		return input.Accept()
-	}
-	rateLimiter := s.selectRateLimiter(input)
-	if rateLimiter == nil {
-		return input.Accept()
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	limited, _, err := rateLimiter.RateLimitCtx(ctx, limitKey, 1)
-	if err != nil {
-		return nil, err
-	}
-	if limited {
-		return s.reject(input), nil
-	}
-	return input.Accept()
-}
-
 type rateLimitQuotaPerKind struct {
 	matchKind func(int) bool
 	quota     RateQuota
 }
 
 func RateLimitQuotaForKindList(kinds []int, quota RateQuota) rateLimitQuotaPerKind {
-	kindSet := sliceToSet(kinds)
+	kindSet := utils.SliceToSet(kinds)
 	return rateLimitQuotaPerKind{
 		matchKind: func(kind int) bool {
 			_, ok := kindSet[kind]
@@ -158,47 +197,4 @@ func RateLimitQuotaForMatchingKinds(matcher func(int) bool, quota RateQuota) rat
 type rateLimiterPerKind struct {
 	matchKind   func(int) bool
 	rateLimiter throttled.RateLimiterCtx
-}
-
-func RateLimitPerUserAndKind(quotas []rateLimitQuotaPerKind, userKey rateLimitUserKey, exclude func(*evsifter.Input) bool, rejFn rejectionFn) *multiRateLimitSifter {
-	store, _ := memstore.NewCtx(65536)
-	limiters := make([]rateLimiterPerKind, 0, len(quotas))
-	for _, quota := range quotas {
-		rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, quota.quota.toThrottled())
-		limiters = append(limiters, rateLimiterPerKind{
-			matchKind:   quota.matchKind,
-			rateLimiter: rateLimiter,
-		})
-	}
-	selectRateLimiter := func(input *evsifter.Input) throttled.RateLimiterCtx {
-		for _, limiter := range limiters {
-			if limiter.matchKind(input.Event.Kind) {
-				return limiter.rateLimiter
-			}
-		}
-		return nil
-	}
-	s := &multiRateLimitSifter{
-		selectRateLimiter: selectRateLimiter,
-		getLimitKey: func(input *evsifter.Input) (bool, string) {
-			if !input.SourceType.IsEndUser() {
-				return false, ""
-			}
-			if exclude != nil && exclude(input) {
-				return false, ""
-			}
-
-			kind := input.Event.Kind
-			switch userKey {
-			case RateLimitByIPAddr:
-				return true, fmt.Sprintf("%s/%d", input.SourceInfo, kind)
-			case RateLimitByPubKey:
-				return true, fmt.Sprintf("%s/%d", input.Event.PubKey, kind)
-			default:
-				return false, ""
-			}
-		},
-		reject: orDefaultRejFn(rejFn, RejectWithMsg("rate-limited: rate limit exceeded")),
-	}
-	return s
 }

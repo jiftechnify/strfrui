@@ -1,6 +1,6 @@
-package sifters
+package utils
 
-func sliceToSet[T comparable](s []T) map[T]struct{} {
+func SliceToSet[T comparable](s []T) map[T]struct{} {
 	m := make(map[T]struct{})
 	for _, v := range s {
 		m[v] = struct{}{}

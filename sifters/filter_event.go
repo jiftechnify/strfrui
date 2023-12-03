@@ -5,81 +5,46 @@ import (
 	"time"
 
 	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfry-evsifter/sifters/internal/utils"
 	"github.com/nbd-wtf/go-nostr"
 )
 
-type filtersSifter struct {
-	filters nostr.Filters
-	mode    Mode
-	reject  rejectionFn
-}
-
-func (s *filtersSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	matched := s.filters.Match(input.Event)
-	if shouldAccept(matched, s.mode) {
-		return input.Accept()
+func MatchesFilters(filters []nostr.Filter, mode Mode) *sifterUnit {
+	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+		return matchResultFromBool(nostr.Filters(filters).Match(input.Event)), nil
 	}
-	return s.reject(input), nil
+	defaultRejFn := rejectWithMsgPerMode(
+		mode,
+		"blocked: event must match filters to be accepted",
+		"blocked: event is denied by filters",
+	)
+	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func MatchesFilters(filters []nostr.Filter, mode Mode, rejFn rejectionFn) *filtersSifter {
-	s := &filtersSifter{
-		filters: nostr.Filters(filters),
-		mode:    mode,
-		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
-			mode,
-			"blocked: event must match filters to be accepted",
-			"blocked: event doesn't match filters",
-		)),
+func AuthorMatcher(matcher func(string) bool, mode Mode) *sifterUnit {
+	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+		return matchResultFromBool(matcher(input.Event.PubKey)), nil
 	}
-	return s
+	defaultRejFn := rejectWithMsgPerMode(
+		mode,
+		"blocked: event author is not in the whitelist",
+		"blocked: event author is in the blacklist",
+	)
+	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-type authorsSifter struct {
-	matchAuthor func(string) bool
-	mode        Mode
-	reject      rejectionFn
-}
-
-func (s *authorsSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	if shouldAccept(s.matchAuthor(input.Event.PubKey), s.mode) {
-		return input.Accept()
+func AuthorList(authors []string, mode Mode) *sifterUnit {
+	authorSet := utils.SliceToSet(authors)
+	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+		_, ok := authorSet[input.Event.PubKey]
+		return matchResultFromBool(ok), nil
 	}
-	return s.reject(input), nil
-}
-
-func AuthorMatcher(matcher func(string) bool, mode Mode, rejFn rejectionFn) *authorsSifter {
-	s := &authorsSifter{
-		matchAuthor: matcher,
-		mode:        mode,
-		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
-			mode,
-			"blocked: the author of the event is not in the whitelist",
-			"blocked: the author of the event is in the blacklist",
-		)),
-	}
-	return s
-}
-
-func matchAuthorWithList(pubkeys []string) func(string) bool {
-	m := sliceToSet(pubkeys)
-	return func(pubkey string) bool {
-		_, ok := m[pubkey]
-		return ok
-	}
-}
-
-func AuthorList(authors []string, mode Mode, rejFn rejectionFn) *authorsSifter {
-	s := &authorsSifter{
-		matchAuthor: matchAuthorWithList(authors),
-		mode:        mode,
-		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(
-			mode,
-			"blocked: author is not int the whitelist",
-			"blocked: author is in the blacklist",
-		)),
-	}
-	return s
+	defaultRejFn := rejectWithMsgPerMode(
+		mode,
+		"blocked: event author is not in the whitelist",
+		"blocked: event author is in the blacklist",
+	)
+	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
 var (
@@ -99,44 +64,30 @@ var (
 	}
 )
 
-type kindsSifter struct {
-	matchKind func(int) bool
-	mode      Mode
-	reject    rejectionFn
+func KindMatcher(matcher func(int) bool, mode Mode) *sifterUnit {
+	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+		return matchResultFromBool(matcher(input.Event.Kind)), nil
+	}
+	defaultRejFn := rejectWithMsgPerMode(
+		mode,
+		"blocked: the kind of the event is not in the whitelist",
+		"blocked: the kind of the event is in the blacklist",
+	)
+	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func (s *kindsSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	matched := s.matchKind(input.Event.Kind)
-	if shouldAccept(matched, s.mode) {
-		return input.Accept()
+func KindList(kinds []int, mode Mode) *sifterUnit {
+	kindSet := utils.SliceToSet(kinds)
+	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+		_, ok := kindSet[input.Event.Kind]
+		return matchResultFromBool(ok), nil
 	}
-	return s.reject(input), nil
-}
-
-func KindMatcher(matcher func(int) bool, mode Mode, rejFn rejectionFn) *kindsSifter {
-	s := &kindsSifter{
-		matchKind: matcher,
-		mode:      mode,
-		reject:    orDefaultRejFn(rejFn, RejectWithMsg("blocked: the kind of the event is not allowed")),
-	}
-	return s
-}
-
-func matchKindWithList(kinds []int) func(int) bool {
-	m := sliceToSet(kinds)
-	return func(kind int) bool {
-		_, ok := m[kind]
-		return ok
-	}
-}
-
-func KindList(kinds []int, mode Mode, rejFn rejectionFn) *kindsSifter {
-	s := &kindsSifter{
-		matchKind: matchKindWithList(kinds),
-		mode:      mode,
-		reject:    orDefaultRejFn(rejFn, RejectWithMsg("blocked: the kind of the event is not allowed")),
-	}
-	return s
+	defaultRejFn := rejectWithMsgPerMode(
+		mode,
+		"blocked: the kind of the event is not in the whitelist",
+		"blocked: the kind of the event is in the blacklist",
+	)
+	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
 type fakeableClock struct {
@@ -188,29 +139,15 @@ func (r RelativeTimeRange) String() string {
 	return fmt.Sprintf("[%s, %s]", left, right)
 }
 
-type createdAtRangeSifter struct {
-	timeRange RelativeTimeRange
-	mode      Mode
-	reject    rejectionFn
-}
-
-func (s *createdAtRangeSifter) Sift(input *evsifter.Input) (*evsifter.Result, error) {
-	createdAt := input.Event.CreatedAt.Time()
-
-	if shouldAccept(s.timeRange.Contains(createdAt), s.mode) {
-		return input.Accept()
+func CreatedAtRange(timeRange RelativeTimeRange, mode Mode) *sifterUnit {
+	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+		createdAt := input.Event.CreatedAt.Time()
+		return matchResultFromBool(timeRange.Contains(createdAt)), nil
 	}
-	return s.reject(input), nil
-}
-
-func CreatedAtRange(timeRange RelativeTimeRange, mode Mode, rejFn rejectionFn) *createdAtRangeSifter {
-	s := &createdAtRangeSifter{
-		timeRange: timeRange,
-		mode:      mode,
-		reject: orDefaultRejFn(rejFn, rejectWithMsgPerMode(mode,
-			fmt.Sprintf("invalid: event timestamp is out of the range: %v", timeRange),
-			fmt.Sprintf("blocked: event timestamp must be out of the range: %v", timeRange),
-		)),
-	}
-	return s
+	defaultRejFn := rejectWithMsgPerMode(
+		mode,
+		fmt.Sprintf("invalid: event timestamp is out of the range: %v", timeRange),
+		fmt.Sprintf("blocked: event timestamp must be out of the range: %v", timeRange),
+	)
+	return newSifterUnit(matchInput, mode, defaultRejFn)
 }

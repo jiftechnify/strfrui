@@ -24,7 +24,7 @@ func TestMatchesFilters(t *testing.T) {
 	}
 
 	t.Run("accepts if Nostr filter matches", func(t *testing.T) {
-		s := MatchesFilters(filters, Allow, nil)
+		s := MatchesFilters(filters, Allow)
 
 		evs := []*nostr.Event{
 			{Kind: 0, Tags: []nostr.Tag{}},
@@ -44,7 +44,7 @@ func TestMatchesFilters(t *testing.T) {
 	})
 
 	t.Run("rejects if Nostr filter doesn't match", func(t *testing.T) {
-		s := MatchesFilters(filters, Allow, nil)
+		s := MatchesFilters(filters, Allow)
 
 		evs := []*nostr.Event{
 			{Kind: 1},
@@ -69,7 +69,7 @@ func TestAuthorMatcher(t *testing.T) {
 	}
 
 	t.Run("accepts if author matches the matcher", func(t *testing.T) {
-		s := AuthorMatcher(matcher, Allow, nil)
+		s := AuthorMatcher(matcher, Allow)
 
 		res, err := s.Sift(inputWithEvent(&nostr.Event{PubKey: "white snow"}))
 		if err != nil {
@@ -81,7 +81,7 @@ func TestAuthorMatcher(t *testing.T) {
 	})
 
 	t.Run("rejects if author doesn't match the matcher", func(t *testing.T) {
-		s := AuthorMatcher(matcher, Allow, nil)
+		s := AuthorMatcher(matcher, Allow)
 
 		res, err := s.Sift(inputWithEvent(&nostr.Event{PubKey: "nobody"}))
 		if err != nil {
@@ -97,7 +97,7 @@ func TestAuthorList(t *testing.T) {
 	whitelist := []string{"white snow", "ivory tower", "azure sky"}
 
 	t.Run("accepts if author is in the whitelist", func(t *testing.T) {
-		s := AuthorList(whitelist, Allow, nil)
+		s := AuthorList(whitelist, Allow)
 
 		evs := []*nostr.Event{
 			{PubKey: "white snow"},
@@ -117,7 +117,7 @@ func TestAuthorList(t *testing.T) {
 	})
 
 	t.Run("rejects if author is not in the whitelist", func(t *testing.T) {
-		s := AuthorList(whitelist, Allow, nil)
+		s := AuthorList(whitelist, Allow)
 
 		res, err := s.Sift(inputWithEvent(&nostr.Event{PubKey: "nobody"}))
 		if err != nil {
@@ -131,7 +131,7 @@ func TestAuthorList(t *testing.T) {
 
 func TestKindMatcher(t *testing.T) {
 	t.Run("accepts if kind matches the matcher", func(t *testing.T) {
-		s := KindMatcher(KindsAllRegular, Allow, nil)
+		s := KindMatcher(KindsAllRegular, Allow)
 
 		evs := []*nostr.Event{
 			{Kind: 1},
@@ -153,7 +153,7 @@ func TestKindMatcher(t *testing.T) {
 	})
 
 	t.Run("rejects if kind doesn't match the matcher", func(t *testing.T) {
-		s := KindMatcher(KindsAllRegular, Allow, nil)
+		s := KindMatcher(KindsAllRegular, Allow)
 
 		evs := []*nostr.Event{
 			{Kind: 0},
@@ -180,7 +180,7 @@ func TestKindList(t *testing.T) {
 	whitelist := []int{0, 1, 3}
 
 	t.Run("accepts if kind is in the whitelist", func(t *testing.T) {
-		s := KindList(whitelist, Allow, nil)
+		s := KindList(whitelist, Allow)
 
 		evs := []*nostr.Event{
 			{Kind: 0},
@@ -200,7 +200,7 @@ func TestKindList(t *testing.T) {
 	})
 
 	t.Run("rejects if kind is not in the whitelist", func(t *testing.T) {
-		s := KindList(whitelist, Allow, nil)
+		s := KindList(whitelist, Allow)
 
 		evs := []*nostr.Event{
 			{Kind: 4},
@@ -231,7 +231,7 @@ func TestCreatedAtRange(t *testing.T) {
 		s := CreatedAtRange(RelativeTimeRange{
 			maxPastDelta:   10 * time.Minute,
 			maxFutureDelta: 5 * time.Minute,
-		}, Allow, nil)
+		}, Allow)
 
 		evs := []*nostr.Event{
 			{CreatedAt: 1000},
@@ -253,7 +253,7 @@ func TestCreatedAtRange(t *testing.T) {
 	t.Run("accepts if created_at is within the limit (left-opened interval)", func(t *testing.T) {
 		s := CreatedAtRange(RelativeTimeRange{
 			maxFutureDelta: 5 * time.Minute,
-		}, Allow, nil)
+		}, Allow)
 
 		evs := []*nostr.Event{
 			{CreatedAt: 1000},
@@ -276,7 +276,7 @@ func TestCreatedAtRange(t *testing.T) {
 	t.Run("accepts if created_at is within the limit (right-opened interval)", func(t *testing.T) {
 		s := CreatedAtRange(RelativeTimeRange{
 			maxPastDelta: 10 * time.Minute,
-		}, Allow, nil)
+		}, Allow)
 
 		evs := []*nostr.Event{
 			{CreatedAt: 1000},
@@ -300,7 +300,7 @@ func TestCreatedAtRange(t *testing.T) {
 		s := CreatedAtRange(RelativeTimeRange{
 			maxPastDelta:   10 * time.Minute,
 			maxFutureDelta: 5 * time.Minute,
-		}, Allow, nil)
+		}, Allow)
 
 		evs := []*nostr.Event{
 			{CreatedAt: 0},

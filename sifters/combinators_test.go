@@ -118,7 +118,7 @@ func TestOneOf(t *testing.T) {
 			rejectAll("reject 1"),
 			acceptAll,
 			rejectAll("reject 2"),
-		}, nil)
+		})
 
 		res, err := s.Sift(dummyInput)
 		if err != nil {
@@ -134,7 +134,7 @@ func TestOneOf(t *testing.T) {
 			rejectAll("reject 1"),
 			rejectAll("reject 2"),
 			rejectAll("reject 3"),
-		}, nil)
+		})
 
 		res, err := s.Sift(dummyInput)
 		if err != nil {
@@ -143,17 +143,14 @@ func TestOneOf(t *testing.T) {
 		if res.Action != evsifter.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
-		if res.Msg != "no one accepted" {
-			t.Fatalf("unexpected result: %+v", res)
-		}
 	})
 
-	t.Run("rejects with result emitted by given rejection func", func(t *testing.T) {
+	t.Run("rejects with custom result specified by modifier (override message)", func(t *testing.T) {
 		s := OneOf([]evsifter.Sifter{
 			rejectAll("reject 1"),
 			rejectAll("reject 2"),
 			rejectAll("reject 3"),
-		}, RejectWithMsg("no one accepted"))
+		}).RejectWithMsg("no one accepted")
 
 		res, err := s.Sift(dummyInput)
 		if err != nil {
@@ -172,16 +169,13 @@ func TestOneOf(t *testing.T) {
 			rejectAll("reject 1"),
 			rejectAll("reject 2"),
 			rejectAll("reject 3"),
-		}, ShadowReject)
+		}).ShadowReject()
 
 		res, err := s.Sift(dummyInput)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionReject {
-			t.Fatalf("unexpected result: %+v", res)
-		}
-		if res.Msg != "no one accepted" {
+		if res.Action != evsifter.ActionShadowReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})

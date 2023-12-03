@@ -1,7 +1,6 @@
 package sifters
 
 import (
-	"log"
 	"net/netip"
 	"testing"
 
@@ -23,7 +22,7 @@ func TestSourceIPMatcher(t *testing.T) {
 	}
 
 	t.Run("accepts if source IP matches the matcher", func(t *testing.T) {
-		s := SourceIPMatcher(isIPv4, Allow, Allow, nil)
+		s := SourceIPMatcher(isIPv4, Allow, Allow)
 
 		addrs := []string{
 			"127.0.0.1",
@@ -42,7 +41,7 @@ func TestSourceIPMatcher(t *testing.T) {
 	})
 
 	t.Run("rejects if source IP doesn't match the matcher", func(t *testing.T) {
-		s := SourceIPMatcher(isIPv4, Allow, Allow, nil)
+		s := SourceIPMatcher(isIPv4, Allow, Allow)
 
 		addrs := []string{
 			"::1",
@@ -61,7 +60,7 @@ func TestSourceIPMatcher(t *testing.T) {
 	})
 
 	t.Run("always accept if source type is not IP4/IP6", func(t *testing.T) {
-		s := SourceIPMatcher(isIPv4, Allow, Allow, nil)
+		s := SourceIPMatcher(isIPv4, Allow, Allow)
 
 		ins := []*evsifter.Input{
 			inputWithSource(evsifter.SourceTypeImport, ""),
@@ -81,7 +80,7 @@ func TestSourceIPMatcher(t *testing.T) {
 	})
 
 	t.Run("respects specified mode for unknown source (Allow)", func(t *testing.T) {
-		s := SourceIPMatcher(isIPv4, Allow, Allow, nil)
+		s := SourceIPMatcher(isIPv4, Allow, Allow)
 
 		res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP4, "???"))
 		if err != nil {
@@ -93,7 +92,7 @@ func TestSourceIPMatcher(t *testing.T) {
 	})
 
 	t.Run("respects specified mode for unknown source (Deny)", func(t *testing.T) {
-		s := SourceIPMatcher(isIPv4, Allow, Deny, nil)
+		s := SourceIPMatcher(isIPv4, Allow, Deny)
 
 		res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP4, "???"))
 		if err != nil {
@@ -114,8 +113,7 @@ func TestSourceIPPrefixList(t *testing.T) {
 	})
 
 	t.Run("accepts if source IP matches any of the prefixes", func(t *testing.T) {
-		s := SourceIPPrefixList(prefixes, Allow, Allow, nil)
-		log.Println(prefixes)
+		s := SourceIPPrefixList(prefixes, Allow, Allow)
 
 		addrs4 := []string{
 			"127.0.0.1",
@@ -128,7 +126,6 @@ func TestSourceIPPrefixList(t *testing.T) {
 		}
 
 		for _, addr := range addrs4 {
-			log.Println(addr)
 			res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP4, addr))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -149,7 +146,7 @@ func TestSourceIPPrefixList(t *testing.T) {
 	})
 
 	t.Run("rejects if source IP doesn't match any of the prefixes", func(t *testing.T) {
-		s := SourceIPPrefixList(prefixes, Allow, Allow, nil)
+		s := SourceIPPrefixList(prefixes, Allow, Allow)
 
 		addrs4 := []string{
 			"192.168.2.1",
