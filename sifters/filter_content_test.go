@@ -18,8 +18,8 @@ func inputWithContent(content string) *strfrui.Input {
 }
 
 func TestContentMatcher(t *testing.T) {
-	aToZ := func(content string) bool {
-		return strings.HasPrefix(content, "a") && strings.HasSuffix(content, "z")
+	aToZ := func(content string) (bool, error) {
+		return strings.HasPrefix(content, "a") && strings.HasSuffix(content, "z"), nil
 	}
 	t.Run("accepts if content matches the matcher", func(t *testing.T) {
 		s := ContentMatcher(aToZ, Allow)

@@ -208,6 +208,7 @@ Sifters in `sifters` package:
 - `AuthorList(authors, mode)`
 
 #### Match event `kind`
+- `KindMatcherFallible(matcher, mode)`
 - `KindMatcher(matcher, mode)`
 - `KindList(kinds, mode)`
 

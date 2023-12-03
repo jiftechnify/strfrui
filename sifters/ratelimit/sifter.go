@@ -13,10 +13,10 @@ import (
 	"github.com/throttled/throttled/v2/store/memstore"
 )
 
-type UserKey int
+type userKey int
 
 const (
-	IPAddr UserKey = iota + 1
+	IPAddr userKey = iota + 1
 	PubKey
 )
 
@@ -85,7 +85,7 @@ func newSifterUnit(selectLimiter selectRateLimiterFn, deriveLimitKey rateLimitKe
 	}
 }
 
-func ByUser(quota Quota, userKey UserKey) *sifterUnit {
+func ByUser(quota Quota, uk userKey) *sifterUnit {
 	store, _ := memstore.NewCtx(65536)
 	rateLimiter, err := throttled.NewGCRARateLimiterCtx(store, quota)
 	if err != nil {
@@ -97,7 +97,7 @@ func ByUser(quota Quota, userKey UserKey) *sifterUnit {
 		if !input.SourceType.IsEndUser() {
 			return false, ""
 		}
-		switch userKey {
+		switch uk {
 		case IPAddr:
 			if isValidIPAddr(input.SourceInfo) {
 				return true, input.SourceInfo
@@ -119,7 +119,7 @@ type rateLimiterPerKind struct {
 
 // rate-limiting event sifter with variable quotas per conditions
 // if no quota matches, the event is accepted
-func ByUserAndKind(quotas []KindQuota, userKey UserKey) *sifterUnit {
+func ByUserAndKind(quotas []KindQuota, uk userKey) *sifterUnit {
 	store, _ := memstore.NewCtx(65536)
 	limiters := make([]rateLimiterPerKind, 0, len(quotas))
 	for _, kq := range quotas {
@@ -146,7 +146,7 @@ func ByUserAndKind(quotas []KindQuota, userKey UserKey) *sifterUnit {
 			return false, ""
 		}
 		kind := input.Event.Kind
-		switch userKey {
+		switch uk {
 		case IPAddr:
 			if isValidIPAddr(input.SourceInfo) {
 				return true, fmt.Sprintf("%s/%d", input.SourceInfo, kind)

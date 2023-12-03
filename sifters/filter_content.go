@@ -7,9 +7,9 @@ import (
 	"github.com/jiftechnify/strfrui"
 )
 
-func ContentMatcher(matcher func(string) bool, mode Mode) *sifterUnit {
+func ContentMatcher(matcher func(string) (bool, error), mode Mode) *sifterUnit {
 	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
-		return matchResultFromBool(matcher(i.Event.Content)), nil
+		return matchResultFromBool(matcher(i.Event.Content))
 	}
 	defaultRejFn := rejectWithMsgPerMode(
 		mode,

@@ -35,7 +35,7 @@ func PoWMinDifficulty(minDifficulty uint) *sifterUnit {
 		if err != nil {
 			return inputAlwaysReject, err
 		}
-		return matchResultFromBool(difficulty >= minDifficulty), nil
+		return matchResultFromBool(difficulty >= minDifficulty, nil)
 	}
 	defaultRejFn := RejectWithMsg(fmt.Sprintf("pow: difficulty is less than %d", minDifficulty))
 	return newSifterUnit(matchInput, Allow, defaultRejFn)

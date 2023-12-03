@@ -10,7 +10,7 @@ import (
 	"github.com/jiftechnify/strfrui"
 )
 
-func SourceIPMatcher(matcher func(netip.Addr) bool, mode Mode, modeForUnknownSource Mode) *sifterUnit {
+func SourceIPMatcher(matcher func(netip.Addr) (bool, error), mode Mode, modeForUnknownSource Mode) *sifterUnit {
 	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		if !i.SourceType.IsEndUser() {
 			return inputAlwaysAccept, nil
@@ -24,7 +24,7 @@ func SourceIPMatcher(matcher func(netip.Addr) bool, mode Mode, modeForUnknownSou
 			return inputAlwaysReject, nil
 		}
 
-		return matchResultFromBool(matcher(addr)), nil
+		return matchResultFromBool(matcher(addr))
 	}
 	defaultRejFn := rejectWithMsgPerMode(
 		mode,
@@ -34,19 +34,19 @@ func SourceIPMatcher(matcher func(netip.Addr) bool, mode Mode, modeForUnknownSou
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func matchWithIPPrefixList(prefixes []netip.Prefix) func(netip.Addr) bool {
+func matchWithIPPrefixList(prefixes []netip.Prefix) func(netip.Addr) (bool, error) {
 	// sort prefixes by length of prefix, in ascending order
 	// so that shorter prefixes (= broader range of addr) are matched first
 	sort.Slice(prefixes, func(i, j int) bool {
 		return prefixes[i].Bits() < prefixes[j].Bits()
 	})
-	return func(addr netip.Addr) bool {
+	return func(addr netip.Addr) (bool, error) {
 		for _, prefix := range prefixes {
 			if prefix.Contains(addr) {
-				return true
+				return true, nil
 			}
 		}
-		return false
+		return false, nil
 	}
 }
 

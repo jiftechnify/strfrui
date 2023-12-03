@@ -17,8 +17,8 @@ func inputWithSource(srcType strfrui.SourceType, srcInfo string) *strfrui.Input 
 }
 
 func TestSourceIPMatcher(t *testing.T) {
-	isIPv4 := func(a netip.Addr) bool {
-		return a.Is4()
+	isIPv4 := func(a netip.Addr) (bool, error) {
+		return a.Is4(), nil
 	}
 
 	t.Run("accepts if source IP matches the matcher", func(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 
 func MatchesFilters(filters []nostr.Filter, mode Mode) *sifterUnit {
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
-		return matchResultFromBool(nostr.Filters(filters).Match(input.Event)), nil
+		return matchResultFromBool(nostr.Filters(filters).Match(input.Event), nil)
 	}
 	defaultRejFn := rejectWithMsgPerMode(
 		mode,
@@ -21,9 +21,9 @@ func MatchesFilters(filters []nostr.Filter, mode Mode) *sifterUnit {
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func AuthorMatcher(matcher func(string) bool, mode Mode) *sifterUnit {
+func AuthorMatcher(matcher func(string) (bool, error), mode Mode) *sifterUnit {
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
-		return matchResultFromBool(matcher(input.Event.PubKey)), nil
+		return matchResultFromBool(matcher(input.Event.PubKey))
 	}
 	defaultRejFn := rejectWithMsgPerMode(
 		mode,
@@ -37,7 +37,7 @@ func AuthorList(authors []string, mode Mode) *sifterUnit {
 	authorSet := utils.SliceToSet(authors)
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		_, ok := authorSet[input.Event.PubKey]
-		return matchResultFromBool(ok), nil
+		return matchResultFromBool(ok, nil)
 	}
 	defaultRejFn := rejectWithMsgPerMode(
 		mode,
@@ -70,9 +70,9 @@ var (
 	}
 )
 
-func KindMatcher(matcher func(int) bool, mode Mode) *sifterUnit {
+func KindMatcherFallible(matcher func(int) (bool, error), mode Mode) *sifterUnit {
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
-		return matchResultFromBool(matcher(input.Event.Kind)), nil
+		return matchResultFromBool(matcher(input.Event.Kind))
 	}
 	defaultRejFn := rejectWithMsgPerMode(
 		mode,
@@ -82,11 +82,18 @@ func KindMatcher(matcher func(int) bool, mode Mode) *sifterUnit {
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
+func KindMatcher(matcher func(int) bool, mode Mode) *sifterUnit {
+	matcherf := func(k int) (bool, error) {
+		return matcher(k), nil
+	}
+	return KindMatcherFallible(matcherf, mode)
+}
+
 func KindList(kinds []int, mode Mode) *sifterUnit {
 	kindSet := utils.SliceToSet(kinds)
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		_, ok := kindSet[input.Event.Kind]
-		return matchResultFromBool(ok), nil
+		return matchResultFromBool(ok, nil)
 	}
 	defaultRejFn := rejectWithMsgPerMode(
 		mode,
@@ -148,7 +155,7 @@ func (r RelativeTimeRange) String() string {
 func CreatedAtRange(timeRange RelativeTimeRange, mode Mode) *sifterUnit {
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		createdAt := input.Event.CreatedAt.Time()
-		return matchResultFromBool(timeRange.Contains(createdAt)), nil
+		return matchResultFromBool(timeRange.Contains(createdAt), nil)
 	}
 	defaultRejFn := rejectWithMsgPerMode(
 		mode,

@@ -64,8 +64,8 @@ func TestMatchesFilters(t *testing.T) {
 }
 
 func TestAuthorMatcher(t *testing.T) {
-	matcher := func(author string) bool {
-		return strings.HasPrefix(author, "white")
+	matcher := func(author string) (bool, error) {
+		return strings.HasPrefix(author, "white"), nil
 	}
 
 	t.Run("accepts if author matches the matcher", func(t *testing.T) {

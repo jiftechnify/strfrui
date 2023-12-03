@@ -22,11 +22,14 @@ const (
 	inputAlwaysReject
 )
 
-func matchResultFromBool(b bool) inputMatchResult {
-	if b {
-		return inputMatch
+func matchResultFromBool(b bool, err error) (inputMatchResult, error) {
+	if err != nil {
+		return inputAlwaysReject, err
 	}
-	return inputMismatch
+	if b {
+		return inputMatch, nil
+	}
+	return inputMismatch, nil
 }
 
 func shouldAccept(matchRes inputMatchResult, mode Mode) bool {
