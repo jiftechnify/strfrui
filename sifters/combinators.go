@@ -86,7 +86,7 @@ func (s *oneOfSifter) RejectWithMsgFromInput(getMsg func(*strfrui.Input) string)
 func OneOf(ss ...strfrui.Sifter) *oneOfSifter {
 	return &oneOfSifter{
 		children: assignDefaultLabelsToSifters(ss...),
-		reject:   RejectWithMsg("blocked: any of sub-sifters didn't accept the evnt"),
+		reject:   RejectWithMsg("blocked: any of sub-sifters didn't accept the event"),
 	}
 }
 
