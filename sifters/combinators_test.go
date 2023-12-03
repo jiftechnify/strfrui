@@ -114,11 +114,11 @@ func TestPipeline(t *testing.T) {
 
 func TestOneOf(t *testing.T) {
 	t.Run("accepts if any child accepts", func(t *testing.T) {
-		s := OneOf([]strfrui.Sifter{
+		s := OneOf(
 			rejectAll("reject 1"),
 			acceptAll,
 			rejectAll("reject 2"),
-		})
+		)
 
 		res, err := s.Sift(dummyInput)
 		if err != nil {
@@ -130,11 +130,11 @@ func TestOneOf(t *testing.T) {
 	})
 
 	t.Run("rejects if all children reject", func(t *testing.T) {
-		s := OneOf([]strfrui.Sifter{
+		s := OneOf(
 			rejectAll("reject 1"),
 			rejectAll("reject 2"),
 			rejectAll("reject 3"),
-		})
+		)
 
 		res, err := s.Sift(dummyInput)
 		if err != nil {
@@ -146,11 +146,11 @@ func TestOneOf(t *testing.T) {
 	})
 
 	t.Run("rejects with custom result specified by modifier (override message)", func(t *testing.T) {
-		s := OneOf([]strfrui.Sifter{
+		s := OneOf(
 			rejectAll("reject 1"),
 			rejectAll("reject 2"),
 			rejectAll("reject 3"),
-		}).RejectWithMsg("no one accepted")
+		).RejectWithMsg("no one accepted")
 
 		res, err := s.Sift(dummyInput)
 		if err != nil {
@@ -165,11 +165,11 @@ func TestOneOf(t *testing.T) {
 	})
 
 	t.Run("rejects with result emitted by given rejection func (shadow)", func(t *testing.T) {
-		s := OneOf([]strfrui.Sifter{
+		s := OneOf(
 			rejectAll("reject 1"),
 			rejectAll("reject 2"),
 			rejectAll("reject 3"),
-		}).ShadowReject()
+		).ShadowReject()
 
 		res, err := s.Sift(dummyInput)
 		if err != nil {
