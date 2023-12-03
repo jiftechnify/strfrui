@@ -11,7 +11,7 @@ go get github.com/jiftechnify/strfrui
 
 ## Features
 * Gives you foundations for writing a custom event-sifter as a simple function and running it.
-* Handful of out-of-the-box event-sifters, including rate-limiters.
+* Offers out-of-the-box event-sifters, including rate limiters.
 * Sifter combinators: you can build own event-sifters by composing small parts together.
 
 ## Examples
@@ -167,9 +167,9 @@ If any sub-sifter rejects the input, the combined sifter rejects with the result
 
 #### `OneOf(...sifters)`
 
-Combines a list of sifters into one. The resulting sifter accepts an input if *one of* inner sifters accepts it.
+Combines a list of sifters into one. The resulting sifter accepts an input if *one of* sub-sifters accepts it.
 
-If all sifters rejects the input, the combined sifter rejects with message by default: `"blocked: any of sub-sifters didn't accept the event"`. You can customize rejection behavior by calling `.RejectWithMsg()/.RejectWithMsgFromInput()/.ShadowReject()` methods on it.
+If all sub-sifters rejects the input, the combined sifter rejects with message: `"blocked: any of sub-sifters didn't accept the event"` by default. You can customize rejection behavior by calling `.RejectWithMsg()/.RejectWithMsgFromInput()/.ShadowReject()` methods on it.
 
 #### `IfThen(cond, body)`
 
@@ -196,7 +196,7 @@ if (!cond(input)) {
 ```
 
 
-### List of out-of-the-box event-sifters
+### List of built-in event-sifters
 
 Sifters in `sifters` package:
 
@@ -236,7 +236,7 @@ Rate limiting sifters in `ratelimit` package:
 - `ByUser(quota, userKey)`
 - `ByUserAndKind(quotas, userKey)`
 
-### About the `mode` parameter of out-of-the-box sifters
+### About the `mode` parameter of built-in sifters
 
 Most of built-in event-sifters take `mode` parameter that specifies the behavior of sifters when an input matches given condition. Available `mode`s are:
 
