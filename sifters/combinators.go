@@ -90,6 +90,41 @@ func OneOf(ss []strfrui.Sifter) *oneOfSifter {
 	}
 }
 
+type ifThenSifter struct {
+	ifAccepted bool
+	cond       strfrui.Sifter
+	body       strfrui.Sifter
+}
+
+func (s *ifThenSifter) Sift(input *strfrui.Input) (*strfrui.Result, error) {
+	condRes, err := s.cond.Sift(input)
+	if err != nil {
+		return nil, err
+	}
+
+	shouldApplyBody := s.ifAccepted == (condRes.Action == strfrui.ActionAccept)
+	if !shouldApplyBody {
+		return input.Accept()
+	}
+	return s.body.Sift(input)
+}
+
+func IfThen(cond, body strfrui.Sifter) *ifThenSifter {
+	return &ifThenSifter{
+		ifAccepted: true,
+		cond:       cond,
+		body:       body,
+	}
+}
+
+func IfNotThen(cond, body strfrui.Sifter) *ifThenSifter {
+	return &ifThenSifter{
+		ifAccepted: false,
+		cond:       cond,
+		body:       body,
+	}
+}
+
 // sifter with modifiers that change its behavior (especially in Pipeline)
 type moddedSifter struct {
 	s           strfrui.Sifter

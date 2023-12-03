@@ -180,3 +180,133 @@ func TestOneOf(t *testing.T) {
 		}
 	})
 }
+
+func TestIfThen(t *testing.T) {
+	t.Run("accepts if both `cond` and `body` accepts", func(t *testing.T) {
+		s := IfThen(
+			acceptAll,
+			acceptAll,
+		)
+
+		res, err := s.Sift(dummyInput)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionAccept {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+	})
+
+	t.Run("rejects if `cond` accepts and `body` rejects", func(t *testing.T) {
+		s := IfThen(
+			acceptAll,
+			rejectAll("body rejects"),
+		)
+
+		res, err := s.Sift(dummyInput)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionReject {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+		if res.Msg != "body rejects" {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+	})
+
+	t.Run("accepts if `cond` rejects and `body` accepts", func(t *testing.T) {
+		s := IfThen(
+			rejectAll("cond rejects"),
+			acceptAll,
+		)
+
+		res, err := s.Sift(dummyInput)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionAccept {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+	})
+
+	t.Run("accepts if both `cond` and `body` rejects", func(t *testing.T) {
+		s := IfThen(
+			rejectAll("cond rejects"),
+			rejectAll("body also rejects"),
+		)
+
+		res, err := s.Sift(dummyInput)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionAccept {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+	})
+}
+
+func TestIfNotThen(t *testing.T) {
+	t.Run("accepts if both `cond` and `body` accepts", func(t *testing.T) {
+		s := IfNotThen(
+			acceptAll,
+			acceptAll,
+		)
+
+		res, err := s.Sift(dummyInput)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionAccept {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+	})
+
+	t.Run("accepts if `cond` accepts and `body` rejects", func(t *testing.T) {
+		s := IfNotThen(
+			acceptAll,
+			rejectAll("body rejects"),
+		)
+
+		res, err := s.Sift(dummyInput)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionAccept {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+	})
+
+	t.Run("accepts if `cond` rejects and `body` accepts", func(t *testing.T) {
+		s := IfNotThen(
+			rejectAll("cond rejects"),
+			acceptAll,
+		)
+
+		res, err := s.Sift(dummyInput)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionAccept {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+	})
+
+	t.Run("rejects if both `cond` and `body` rejects", func(t *testing.T) {
+		s := IfNotThen(
+			rejectAll("cond rejects"),
+			rejectAll("body also rejects"),
+		)
+
+		res, err := s.Sift(dummyInput)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionReject {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+		if res.Msg != "body also rejects" {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+	})
+}
