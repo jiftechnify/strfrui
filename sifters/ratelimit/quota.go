@@ -26,14 +26,14 @@ func PerDuration(n int, d time.Duration) Rate { return throttled.PerDuration(n, 
 
 type Quota = throttled.RateQuota
 
-type QuotaForKind struct {
+type KindQuota struct {
 	matchKind func(int) bool
 	quota     Quota
 }
 
-func QuotaForKindList(kinds []int, quota Quota) QuotaForKind {
+func QuotaForKinds(kinds []int, quota Quota) KindQuota {
 	kindSet := utils.SliceToSet(kinds)
-	return QuotaForKind{
+	return KindQuota{
 		matchKind: func(kind int) bool {
 			_, ok := kindSet[kind]
 			return ok
@@ -42,8 +42,8 @@ func QuotaForKindList(kinds []int, quota Quota) QuotaForKind {
 	}
 }
 
-func QuotaForMatchingKinds(matcher func(int) bool, quota Quota) QuotaForKind {
-	return QuotaForKind{
+func QuotaForKindsFn(matcher func(int) bool, quota Quota) KindQuota {
+	return KindQuota{
 		matchKind: matcher,
 		quota:     quota,
 	}

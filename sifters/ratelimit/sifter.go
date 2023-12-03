@@ -3,6 +3,7 @@ package ratelimit
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/netip"
 	"time"
 
@@ -86,7 +87,10 @@ func newSifterUnit(selectLimiter selectRateLimiterFn, deriveLimitKey rateLimitKe
 
 func ByUser(quota Quota, userKey UserKey) *sifterUnit {
 	store, _ := memstore.NewCtx(65536)
-	rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, quota)
+	rateLimiter, err := throttled.NewGCRARateLimiterCtx(store, quota)
+	if err != nil {
+		log.Fatalf("ratelimit.ByUser: failed to initialize rate-limiter: %v", err)
+	}
 
 	selectLimiter := func(_ *evsifter.Input) throttled.RateLimiterCtx { return rateLimiter }
 	deriveLimitKey := func(input *evsifter.Input) (bool, string) {
@@ -115,11 +119,14 @@ type rateLimiterPerKind struct {
 
 // rate-limiting event sifter with variable quotas per conditions
 // if no quota matches, the event is accepted
-func ByUserAndKind(quotas []QuotaForKind, userKey UserKey) *sifterUnit {
+func ByUserAndKind(quotas []KindQuota, userKey UserKey) *sifterUnit {
 	store, _ := memstore.NewCtx(65536)
 	limiters := make([]rateLimiterPerKind, 0, len(quotas))
 	for _, kq := range quotas {
-		rateLimiter, _ := throttled.NewGCRARateLimiterCtx(store, kq.quota)
+		rateLimiter, err := throttled.NewGCRARateLimiterCtx(store, kq.quota)
+		if err != nil {
+			log.Fatalf("ratelimit.ByUser: failed to initialize rate-limiter: %v", err)
+		}
 		limiters = append(limiters, rateLimiterPerKind{
 			matchKind:   kq.matchKind,
 			rateLimiter: rateLimiter,
