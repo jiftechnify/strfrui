@@ -3,7 +3,7 @@ package sifters
 import (
 	"fmt"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfrui"
 )
 
 var nibbleToLzs = map[rune]uint{
@@ -30,7 +30,7 @@ func leadingZerosOfEventID(id string) (uint, error) {
 }
 
 func PoWMinDifficulty(minDifficulty uint) *sifterUnit {
-	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		difficulty, err := leadingZerosOfEventID(input.Event.ID)
 		if err != nil {
 			return inputAlwaysReject, err

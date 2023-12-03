@@ -4,12 +4,12 @@ import (
 	"net/netip"
 	"testing"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfrui"
 	"github.com/nbd-wtf/go-nostr"
 )
 
-func inputWithSource(srcType evsifter.SourceType, srcInfo string) *evsifter.Input {
-	return &evsifter.Input{
+func inputWithSource(srcType strfrui.SourceType, srcInfo string) *strfrui.Input {
+	return &strfrui.Input{
 		SourceType: srcType,
 		SourceInfo: srcInfo,
 		Event:      &nostr.Event{},
@@ -30,11 +30,11 @@ func TestSourceIPMatcher(t *testing.T) {
 		}
 
 		for _, addr := range addrs {
-			res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP4, addr))
+			res, err := s.Sift(inputWithSource(strfrui.SourceTypeIP4, addr))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -49,11 +49,11 @@ func TestSourceIPMatcher(t *testing.T) {
 		}
 
 		for _, addr := range addrs {
-			res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP6, addr))
+			res, err := s.Sift(inputWithSource(strfrui.SourceTypeIP6, addr))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -62,10 +62,10 @@ func TestSourceIPMatcher(t *testing.T) {
 	t.Run("always accept if source type is not IP4/IP6", func(t *testing.T) {
 		s := SourceIPMatcher(isIPv4, Allow, Allow)
 
-		ins := []*evsifter.Input{
-			inputWithSource(evsifter.SourceTypeImport, ""),
-			inputWithSource(evsifter.SourceTypeStream, "wss://example.com"),
-			inputWithSource(evsifter.SourceTypeSync, "wss://example.com"),
+		ins := []*strfrui.Input{
+			inputWithSource(strfrui.SourceTypeImport, ""),
+			inputWithSource(strfrui.SourceTypeStream, "wss://example.com"),
+			inputWithSource(strfrui.SourceTypeSync, "wss://example.com"),
 		}
 
 		for _, in := range ins {
@@ -73,7 +73,7 @@ func TestSourceIPMatcher(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -82,11 +82,11 @@ func TestSourceIPMatcher(t *testing.T) {
 	t.Run("respects specified mode for unknown source (Allow)", func(t *testing.T) {
 		s := SourceIPMatcher(isIPv4, Allow, Allow)
 
-		res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP4, "???"))
+		res, err := s.Sift(inputWithSource(strfrui.SourceTypeIP4, "???"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionAccept {
+		if res.Action != strfrui.ActionAccept {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -94,11 +94,11 @@ func TestSourceIPMatcher(t *testing.T) {
 	t.Run("respects specified mode for unknown source (Deny)", func(t *testing.T) {
 		s := SourceIPMatcher(isIPv4, Allow, Deny)
 
-		res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP4, "???"))
+		res, err := s.Sift(inputWithSource(strfrui.SourceTypeIP4, "???"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionReject {
+		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -126,20 +126,20 @@ func TestSourceIPPrefixList(t *testing.T) {
 		}
 
 		for _, addr := range addrs4 {
-			res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP4, addr))
+			res, err := s.Sift(inputWithSource(strfrui.SourceTypeIP4, addr))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
 		for _, addr := range addrs6 {
-			res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP6, addr))
+			res, err := s.Sift(inputWithSource(strfrui.SourceTypeIP6, addr))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -158,20 +158,20 @@ func TestSourceIPPrefixList(t *testing.T) {
 		}
 
 		for _, addr := range addrs4 {
-			res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP4, addr))
+			res, err := s.Sift(inputWithSource(strfrui.SourceTypeIP4, addr))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
 		for _, addr := range addrs6 {
-			res, err := s.Sift(inputWithSource(evsifter.SourceTypeIP6, addr))
+			res, err := s.Sift(inputWithSource(strfrui.SourceTypeIP6, addr))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}

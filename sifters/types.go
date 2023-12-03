@@ -3,7 +3,7 @@ package sifters
 import (
 	"log"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfrui"
 )
 
 type Mode int
@@ -65,30 +65,30 @@ func shouldAccept(matchRes inputMatchResult, mode Mode) bool {
 	}
 }
 
-type RejectionFn func(*evsifter.Input) *evsifter.Result
+type RejectionFn func(*strfrui.Input) *strfrui.Result
 
-var ShadowReject = func(input *evsifter.Input) *evsifter.Result {
-	return &evsifter.Result{
+var ShadowReject = func(input *strfrui.Input) *strfrui.Result {
+	return &strfrui.Result{
 		ID:     input.Event.ID,
-		Action: evsifter.ActionShadowReject,
+		Action: strfrui.ActionShadowReject,
 	}
 }
 
 func RejectWithMsg(msg string) RejectionFn {
-	return func(input *evsifter.Input) *evsifter.Result {
-		return &evsifter.Result{
+	return func(input *strfrui.Input) *strfrui.Result {
+		return &strfrui.Result{
 			ID:     input.Event.ID,
-			Action: evsifter.ActionReject,
+			Action: strfrui.ActionReject,
 			Msg:    msg,
 		}
 	}
 }
 
-func RejectWithMsgFromInput(getMsg func(*evsifter.Input) string) RejectionFn {
-	return func(input *evsifter.Input) *evsifter.Result {
-		return &evsifter.Result{
+func RejectWithMsgFromInput(getMsg func(*strfrui.Input) string) RejectionFn {
+	return func(input *strfrui.Input) *strfrui.Result {
+		return &strfrui.Result{
 			ID:     input.Event.ID,
-			Action: evsifter.ActionReject,
+			Action: strfrui.ActionReject,
 			Msg:    getMsg(input),
 		}
 	}
@@ -110,7 +110,7 @@ func rejectWithMsgPerMode(mode Mode, msgAllow, msgDeny string) RejectionFn {
 	return RejectWithMsg(msg)
 }
 
-type inputMatcher func(*evsifter.Input) (inputMatchResult, error)
+type inputMatcher func(*strfrui.Input) (inputMatchResult, error)
 
 type sifterUnit struct {
 	match  inputMatcher
@@ -118,7 +118,7 @@ type sifterUnit struct {
 	reject RejectionFn
 }
 
-func (s *sifterUnit) Sift(input *evsifter.Input) (*evsifter.Result, error) {
+func (s *sifterUnit) Sift(input *strfrui.Input) (*strfrui.Result, error) {
 	matched, err := s.match(input)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func (s *sifterUnit) RejectWithMsg(msg string) *sifterUnit {
 	return s
 }
 
-func (s *sifterUnit) RejectWithMsgFromInput(getMsg func(*evsifter.Input) string) *sifterUnit {
+func (s *sifterUnit) RejectWithMsgFromInput(getMsg func(*strfrui.Input) string) *sifterUnit {
 	s.reject = RejectWithMsgFromInput(getMsg)
 	return s
 }

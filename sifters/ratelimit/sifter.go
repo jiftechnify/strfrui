@@ -7,8 +7,8 @@ import (
 	"net/netip"
 	"time"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
-	"github.com/jiftechnify/strfry-evsifter/sifters"
+	"github.com/jiftechnify/strfrui"
+	"github.com/jiftechnify/strfrui/sifters"
 	"github.com/throttled/throttled/v2"
 	"github.com/throttled/throttled/v2/store/memstore"
 )
@@ -20,17 +20,17 @@ const (
 	PubKey
 )
 
-type selectRateLimiterFn func(*evsifter.Input) throttled.RateLimiterCtx
-type rateLimitKeyDeriveFn func(*evsifter.Input) (shouldLimit bool, key string)
+type selectRateLimiterFn func(*strfrui.Input) throttled.RateLimiterCtx
+type rateLimitKeyDeriveFn func(*strfrui.Input) (shouldLimit bool, key string)
 
 type sifterUnit struct {
 	selectLimiter  selectRateLimiterFn
 	deriveLimitKey rateLimitKeyDeriveFn
-	exclude        func(*evsifter.Input) bool
+	exclude        func(*strfrui.Input) bool
 	reject         sifters.RejectionFn
 }
 
-func (s *sifterUnit) Sift(input *evsifter.Input) (*evsifter.Result, error) {
+func (s *sifterUnit) Sift(input *strfrui.Input) (*strfrui.Result, error) {
 	if s.exclude(input) {
 		return input.Accept()
 	}
@@ -56,7 +56,7 @@ func (s *sifterUnit) Sift(input *evsifter.Input) (*evsifter.Result, error) {
 	return input.Accept()
 }
 
-func (s *sifterUnit) Exclude(exclude func(*evsifter.Input) bool) *sifterUnit {
+func (s *sifterUnit) Exclude(exclude func(*strfrui.Input) bool) *sifterUnit {
 	s.exclude = exclude
 	return s
 }
@@ -71,7 +71,7 @@ func (s *sifterUnit) RejectWithMsg(msg string) *sifterUnit {
 	return s
 }
 
-func (s *sifterUnit) RejectWithMsgFromInput(getMsg func(*evsifter.Input) string) *sifterUnit {
+func (s *sifterUnit) RejectWithMsgFromInput(getMsg func(*strfrui.Input) string) *sifterUnit {
 	s.reject = sifters.RejectWithMsgFromInput(getMsg)
 	return s
 }
@@ -80,7 +80,7 @@ func newSifterUnit(selectLimiter selectRateLimiterFn, deriveLimitKey rateLimitKe
 	return &sifterUnit{
 		selectLimiter:  selectLimiter,
 		deriveLimitKey: deriveLimitKey,
-		exclude:        func(i *evsifter.Input) bool { return false },
+		exclude:        func(i *strfrui.Input) bool { return false },
 		reject:         sifters.RejectWithMsg("rate-limited: rate limit exceeded"),
 	}
 }
@@ -92,8 +92,8 @@ func ByUser(quota Quota, userKey UserKey) *sifterUnit {
 		log.Fatalf("ratelimit.ByUser: failed to initialize rate-limiter: %v", err)
 	}
 
-	selectLimiter := func(_ *evsifter.Input) throttled.RateLimiterCtx { return rateLimiter }
-	deriveLimitKey := func(input *evsifter.Input) (bool, string) {
+	selectLimiter := func(_ *strfrui.Input) throttled.RateLimiterCtx { return rateLimiter }
+	deriveLimitKey := func(input *strfrui.Input) (bool, string) {
 		if !input.SourceType.IsEndUser() {
 			return false, ""
 		}
@@ -133,7 +133,7 @@ func ByUserAndKind(quotas []KindQuota, userKey UserKey) *sifterUnit {
 		})
 	}
 
-	selectRateLimiter := func(input *evsifter.Input) throttled.RateLimiterCtx {
+	selectRateLimiter := func(input *strfrui.Input) throttled.RateLimiterCtx {
 		for _, limiter := range limiters {
 			if limiter.matchKind(input.Event.Kind) {
 				return limiter.rateLimiter
@@ -141,7 +141,7 @@ func ByUserAndKind(quotas []KindQuota, userKey UserKey) *sifterUnit {
 		}
 		return nil
 	}
-	deriveLimitKey := func(input *evsifter.Input) (bool, string) {
+	deriveLimitKey := func(input *strfrui.Input) (bool, string) {
 		if !input.SourceType.IsEndUser() {
 			return false, ""
 		}

@@ -1,4 +1,4 @@
-package evsifter
+package strfrui
 
 import (
 	"bufio"

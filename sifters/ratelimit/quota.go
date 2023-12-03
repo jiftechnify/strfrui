@@ -3,7 +3,7 @@ package ratelimit
 import (
 	"time"
 
-	"github.com/jiftechnify/strfry-evsifter/sifters/internal/utils"
+	"github.com/jiftechnify/strfrui/sifters/internal/utils"
 	"github.com/throttled/throttled/v2"
 )
 

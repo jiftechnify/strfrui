@@ -3,25 +3,25 @@ package sifters
 import (
 	"testing"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfrui"
 	"github.com/nbd-wtf/go-nostr"
 )
 
 var (
-	dummyInput = &evsifter.Input{Event: &nostr.Event{}}
+	dummyInput = &strfrui.Input{Event: &nostr.Event{}}
 )
 
 var (
-	acceptAll = evsifter.SifterFunc(func(input *evsifter.Input) (*evsifter.Result, error) {
+	acceptAll = strfrui.SifterFunc(func(input *strfrui.Input) (*strfrui.Result, error) {
 		return input.Accept()
 	})
-	shadowRejectAll = evsifter.SifterFunc(func(input *evsifter.Input) (*evsifter.Result, error) {
+	shadowRejectAll = strfrui.SifterFunc(func(input *strfrui.Input) (*strfrui.Result, error) {
 		return input.ShadowReject()
 	})
 )
 
-func rejectAll(msg string) evsifter.Sifter {
-	return evsifter.SifterFunc(func(input *evsifter.Input) (*evsifter.Result, error) {
+func rejectAll(msg string) strfrui.Sifter {
+	return strfrui.SifterFunc(func(input *strfrui.Input) (*strfrui.Result, error) {
 		return input.Reject(msg)
 	})
 }
@@ -34,7 +34,7 @@ func TestPipeline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionAccept {
+		if res.Action != strfrui.ActionAccept {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -50,7 +50,7 @@ func TestPipeline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionReject {
+		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 		if res.Msg != "reject!" {
@@ -70,7 +70,7 @@ func TestPipeline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionReject {
+		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 		if res.Msg != "reject 1" {
@@ -90,7 +90,7 @@ func TestPipeline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionShadowReject {
+		if res.Action != strfrui.ActionShadowReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -106,7 +106,7 @@ func TestPipeline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionAccept {
+		if res.Action != strfrui.ActionAccept {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -114,7 +114,7 @@ func TestPipeline(t *testing.T) {
 
 func TestOneOf(t *testing.T) {
 	t.Run("accepts if any child accepts", func(t *testing.T) {
-		s := OneOf([]evsifter.Sifter{
+		s := OneOf([]strfrui.Sifter{
 			rejectAll("reject 1"),
 			acceptAll,
 			rejectAll("reject 2"),
@@ -124,13 +124,13 @@ func TestOneOf(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionAccept {
+		if res.Action != strfrui.ActionAccept {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
 
 	t.Run("rejects if all children reject", func(t *testing.T) {
-		s := OneOf([]evsifter.Sifter{
+		s := OneOf([]strfrui.Sifter{
 			rejectAll("reject 1"),
 			rejectAll("reject 2"),
 			rejectAll("reject 3"),
@@ -140,13 +140,13 @@ func TestOneOf(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionReject {
+		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
 
 	t.Run("rejects with custom result specified by modifier (override message)", func(t *testing.T) {
-		s := OneOf([]evsifter.Sifter{
+		s := OneOf([]strfrui.Sifter{
 			rejectAll("reject 1"),
 			rejectAll("reject 2"),
 			rejectAll("reject 3"),
@@ -156,7 +156,7 @@ func TestOneOf(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionReject {
+		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 		if res.Msg != "no one accepted" {
@@ -165,7 +165,7 @@ func TestOneOf(t *testing.T) {
 	})
 
 	t.Run("rejects with result emitted by given rejection func (shadow)", func(t *testing.T) {
-		s := OneOf([]evsifter.Sifter{
+		s := OneOf([]strfrui.Sifter{
 			rejectAll("reject 1"),
 			rejectAll("reject 2"),
 			rejectAll("reject 3"),
@@ -175,7 +175,7 @@ func TestOneOf(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionShadowReject {
+		if res.Action != strfrui.ActionShadowReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})

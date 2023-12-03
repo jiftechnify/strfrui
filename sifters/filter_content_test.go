@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfrui"
 	"github.com/nbd-wtf/go-nostr"
 )
 
-func inputWithContent(content string) *evsifter.Input {
-	return &evsifter.Input{
+func inputWithContent(content string) *strfrui.Input {
+	return &strfrui.Input{
 		Event: &nostr.Event{
 			Content: content,
 		},
@@ -28,7 +28,7 @@ func TestContentMatcher(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionAccept {
+		if res.Action != strfrui.ActionAccept {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -40,7 +40,7 @@ func TestContentMatcher(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionReject {
+		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -62,7 +62,7 @@ func TestContentHasAnyWord(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -75,7 +75,7 @@ func TestContentHasAnyWord(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionReject {
+		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -91,7 +91,7 @@ func TestContentHasAllWords(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionAccept {
+		if res.Action != strfrui.ActionAccept {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -110,7 +110,7 @@ func TestContentHasAllWords(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -136,7 +136,7 @@ func TestContentMatchesAnyRegexp(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -155,7 +155,7 @@ func TestContentMatchesAnyRegexp(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -175,7 +175,7 @@ func TestContentMatchesAllRegexps(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionAccept {
+		if res.Action != strfrui.ActionAccept {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -194,7 +194,7 @@ func TestContentMatchesAllRegexps(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}

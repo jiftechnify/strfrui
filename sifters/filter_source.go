@@ -7,11 +7,11 @@ import (
 	"sort"
 	"strings"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfrui"
 )
 
 func SourceIPMatcher(matcher func(netip.Addr) bool, mode Mode, modeForUnknownSource Mode) *sifterUnit {
-	matchInput := func(i *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		if !i.SourceType.IsEndUser() {
 			return inputAlwaysAccept, nil
 		}

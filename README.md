@@ -1,12 +1,12 @@
-# strfry-evsifter
-[![GoDoc](https://pkg.go.dev/badge/github.com/jiftechnify/strfry-evsifter.svg)](https://pkg.go.dev/github.com/jiftechnify/strfry-evsifter)
+# strfrui
+A framework for writing [strfry](https://github.com/hoytech/strfry)'s [event sifter](https://github.com/hoytech/strfry/blob/master/docs/plugins.md) (write policy) plugin in Go.
 
-A tiny framework for writing [strfry](https://github.com/hoytech/strfry)'s [event sifter](https://github.com/hoytech/strfry/blob/master/docs/plugins.md) (write policy) plugin in Go.
+> This project is formerly known as [strfry-evsifter](https://github.com/jiftechnify/strfry-evsifter).
 
 ## Installation
 
 ```bash
-go get github.com/jiftechnify/strfry-evsifter
+go get github.com/jiftechnify/strfrui
 ```
 
 ## Example
@@ -18,7 +18,7 @@ package main
 import (
 	"log"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfrui"
 )
 
 var whiteList = map[string]struct{}{
@@ -26,7 +26,7 @@ var whiteList = map[string]struct{}{
 }
 
 // event-sifting function
-func acceptWhiteListed(input *evsifter.Input) (*evsifter.Result, error) {
+func acceptWhiteListed(input *strfrui.Input) (*strfrui.Result, error) {
 	if _, ok := whiteList[input.Event.PubKey]; ok {
 		return input.Accept()
 	}
@@ -37,8 +37,8 @@ func acceptWhiteListed(input *evsifter.Input) (*evsifter.Result, error) {
 }
 
 func main() {
-	// initialize a evsifter.Runner and set an event-sifting function
-	var s evsifter.Runner
+	// initialize a strfrui.Runner and set an event-sifting function
+	var s strfrui.Runner
 	s.SiftWithFunc(acceptWhiteListed)
 
 	// start the event sifter routine

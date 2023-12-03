@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
-	"github.com/jiftechnify/strfry-evsifter/sifters/internal/utils"
+	"github.com/jiftechnify/strfrui"
+	"github.com/jiftechnify/strfrui/sifters/internal/utils"
 	"github.com/nbd-wtf/go-nostr"
 )
 
 func MatchesFilters(filters []nostr.Filter, mode Mode) *sifterUnit {
-	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		return matchResultFromBool(nostr.Filters(filters).Match(input.Event)), nil
 	}
 	defaultRejFn := rejectWithMsgPerMode(
@@ -22,7 +22,7 @@ func MatchesFilters(filters []nostr.Filter, mode Mode) *sifterUnit {
 }
 
 func AuthorMatcher(matcher func(string) bool, mode Mode) *sifterUnit {
-	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		return matchResultFromBool(matcher(input.Event.PubKey)), nil
 	}
 	defaultRejFn := rejectWithMsgPerMode(
@@ -35,7 +35,7 @@ func AuthorMatcher(matcher func(string) bool, mode Mode) *sifterUnit {
 
 func AuthorList(authors []string, mode Mode) *sifterUnit {
 	authorSet := utils.SliceToSet(authors)
-	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		_, ok := authorSet[input.Event.PubKey]
 		return matchResultFromBool(ok), nil
 	}
@@ -71,7 +71,7 @@ var (
 )
 
 func KindMatcher(matcher func(int) bool, mode Mode) *sifterUnit {
-	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		return matchResultFromBool(matcher(input.Event.Kind)), nil
 	}
 	defaultRejFn := rejectWithMsgPerMode(
@@ -84,7 +84,7 @@ func KindMatcher(matcher func(int) bool, mode Mode) *sifterUnit {
 
 func KindList(kinds []int, mode Mode) *sifterUnit {
 	kindSet := utils.SliceToSet(kinds)
-	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		_, ok := kindSet[input.Event.Kind]
 		return matchResultFromBool(ok), nil
 	}
@@ -146,7 +146,7 @@ func (r RelativeTimeRange) String() string {
 }
 
 func CreatedAtRange(timeRange RelativeTimeRange, mode Mode) *sifterUnit {
-	matchInput := func(input *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		createdAt := input.Event.CreatedAt.Time()
 		return matchResultFromBool(timeRange.Contains(createdAt)), nil
 	}

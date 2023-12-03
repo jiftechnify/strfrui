@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfrui"
 	"github.com/nbd-wtf/go-nostr"
 )
 
-func inputWithEvent(event *nostr.Event) *evsifter.Input {
-	return &evsifter.Input{
+func inputWithEvent(event *nostr.Event) *strfrui.Input {
+	return &strfrui.Input{
 		Event: event,
 	}
 }
@@ -37,7 +37,7 @@ func TestMatchesFilters(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -56,7 +56,7 @@ func TestMatchesFilters(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -75,7 +75,7 @@ func TestAuthorMatcher(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionAccept {
+		if res.Action != strfrui.ActionAccept {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -87,7 +87,7 @@ func TestAuthorMatcher(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionReject {
+		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -110,7 +110,7 @@ func TestAuthorList(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -123,7 +123,7 @@ func TestAuthorList(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Action != evsifter.ActionReject {
+		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
@@ -146,7 +146,7 @@ func TestKindMatcher(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -169,7 +169,7 @@ func TestKindMatcher(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -193,7 +193,7 @@ func TestKindList(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -213,7 +213,7 @@ func TestKindList(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -244,7 +244,7 @@ func TestCreatedAtRange(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -267,7 +267,7 @@ func TestCreatedAtRange(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -290,7 +290,7 @@ func TestCreatedAtRange(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -312,7 +312,7 @@ func TestCreatedAtRange(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}

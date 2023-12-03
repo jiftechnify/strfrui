@@ -3,7 +3,7 @@ package sifters
 import (
 	"testing"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfrui"
 	"github.com/nbd-wtf/go-nostr"
 )
 
@@ -21,7 +21,7 @@ func TestPoWMinDifficulty(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionAccept {
+			if res.Action != strfrui.ActionAccept {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}
@@ -40,7 +40,7 @@ func TestPoWMinDifficulty(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if res.Action != evsifter.ActionReject {
+			if res.Action != strfrui.ActionReject {
 				t.Fatalf("unexpected result: %+v", res)
 			}
 		}

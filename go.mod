@@ -1,4 +1,4 @@
-module github.com/jiftechnify/strfry-evsifter
+module github.com/jiftechnify/strfrui
 
 go 1.21
 

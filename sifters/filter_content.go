@@ -4,11 +4,11 @@ import (
 	"regexp"
 	"strings"
 
-	evsifter "github.com/jiftechnify/strfry-evsifter"
+	"github.com/jiftechnify/strfrui"
 )
 
 func ContentMatcher(matcher func(string) bool, mode Mode) *sifterUnit {
-	matchInput := func(i *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		return matchResultFromBool(matcher(i.Event.Content)), nil
 	}
 	defaultRejFn := rejectWithMsgPerMode(
@@ -20,7 +20,7 @@ func ContentMatcher(matcher func(string) bool, mode Mode) *sifterUnit {
 }
 
 func ContentHasAnyWord(words []string, mode Mode) *sifterUnit {
-	matchInput := func(i *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		for _, word := range words {
 			if strings.Contains(i.Event.Content, word) {
 				return inputMatch, nil
@@ -37,7 +37,7 @@ func ContentHasAnyWord(words []string, mode Mode) *sifterUnit {
 }
 
 func ContentHasAllWords(words []string, mode Mode) *sifterUnit {
-	matchInput := func(i *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		for _, word := range words {
 			if !strings.Contains(i.Event.Content, word) {
 				return inputMismatch, nil
@@ -53,7 +53,7 @@ func ContentHasAllWords(words []string, mode Mode) *sifterUnit {
 }
 
 func ContentMatchesAnyRegexp(regexps []*regexp.Regexp, mode Mode) *sifterUnit {
-	matchInput := func(i *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		for _, r := range regexps {
 			if r.MatchString(i.Event.Content) {
 				return inputMatch, nil
@@ -70,7 +70,7 @@ func ContentMatchesAnyRegexp(regexps []*regexp.Regexp, mode Mode) *sifterUnit {
 }
 
 func ContentMatchesAllRegexps(regexps []*regexp.Regexp, mode Mode) *sifterUnit {
-	matchInput := func(i *evsifter.Input) (inputMatchResult, error) {
+	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		for _, r := range regexps {
 			if !r.MatchString(i.Event.Content) {
 				return inputMismatch, nil
