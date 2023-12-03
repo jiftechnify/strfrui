@@ -3,6 +3,7 @@ package ratelimit
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"time"
 
 	evsifter "github.com/jiftechnify/strfry-evsifter"
@@ -94,7 +95,10 @@ func ByUser(quota Quota, userKey UserKey) *sifterUnit {
 		}
 		switch userKey {
 		case IPAddr:
-			return true, input.SourceInfo
+			if isValidIPAddr(input.SourceInfo) {
+				return true, input.SourceInfo
+			}
+			return false, ""
 		case PubKey:
 			return true, input.Event.PubKey
 		default:
@@ -137,7 +141,10 @@ func ByUserAndKind(quotas []QuotaForKind, userKey UserKey) *sifterUnit {
 		kind := input.Event.Kind
 		switch userKey {
 		case IPAddr:
-			return true, fmt.Sprintf("%s/%d", input.SourceInfo, kind)
+			if isValidIPAddr(input.SourceInfo) {
+				return true, fmt.Sprintf("%s/%d", input.SourceInfo, kind)
+			}
+			return false, ""
 		case PubKey:
 			return true, fmt.Sprintf("%s/%d", input.Event.PubKey, kind)
 		default:
@@ -145,4 +152,9 @@ func ByUserAndKind(quotas []QuotaForKind, userKey UserKey) *sifterUnit {
 		}
 	}
 	return newSifterUnit(selectRateLimiter, deriveLimitKey)
+}
+
+func isValidIPAddr(s string) bool {
+	_, err := netip.ParseAddr(s)
+	return err == nil
 }
