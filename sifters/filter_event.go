@@ -48,19 +48,25 @@ func AuthorList(authors []string, mode Mode) *sifterUnit {
 }
 
 var (
-	// Regular events: kind < 1000 (excluding 0, 3, 41)
-	KindsAllRegular = func(k int) bool {
-		return k == 1 || k == 2 || (3 < k && k < 41) || (41 < k && k < 10000)
-	}
-	// Replaceable events: kind 0, 3, 41 or 10000 <= kind < 20000
-	KindsAllReplaceable = func(k int) bool {
+	// Non-Parametarized Replaceable events: kind 0, 3, 41 and 10000 <= kind < 20000
+	KindsAllNonParamReplaceable = func(k int) bool {
 		return k == 0 || k == 3 || k == 41 || (10000 <= k && k < 20000)
 	}
+	// Parameterized replaceable events: kind 30000 <= kind < 40000
+	KindsAllParamReplaceable = func(k int) bool {
+		return 30000 <= k && k < 40000
+	}
+	// General replaceable events (including both parametarized and non-parameterized)
+	KindsAllReplaceable = func(k int) bool {
+		return KindsAllNonParamReplaceable(k) || KindsAllParamReplaceable(k)
+	}
+	// Ephemeral events: kind 20000 <= kind < 30000
 	KindsAllEphemeral = func(k int) bool {
 		return 20000 <= k && k < 30000
 	}
-	KindsAllParameterizedReplaceable = func(k int) bool {
-		return 30000 <= k && k < 40000
+	// Regular events
+	KindsAllRegular = func(k int) bool {
+		return !(KindsAllReplaceable(k) || KindsAllEphemeral(k))
 	}
 )
 
