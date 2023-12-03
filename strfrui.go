@@ -202,6 +202,20 @@ func (r *Runner) Run() {
 	}
 }
 
+// New initializes a new Runner with the passed Sifter implementation set.
+func New(s Sifter) *Runner {
+	return &Runner{
+		sifter: s,
+	}
+}
+
+// NewWithSifterFunc initializes a new Runner with the passed event sifting function set as a Sifter.
+func NewWithSifterFunc(sf func(input *Input) (*Result, error)) *Runner {
+	return &Runner{
+		sifter: SifterFunc(sf),
+	}
+}
+
 // SiftWith sets a Sifter implementation to the Runner.
 func (r *Runner) SiftWith(s Sifter) {
 	r.sifter = s
