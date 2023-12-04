@@ -39,7 +39,7 @@ func main() {
 }
 ```
 
-The complete list of available out-of-the-box sifters is [here]().
+The complete list of available built-in sifters is [here](https://github.com/jiftechnify/strfrui#list-of-built-in-event-sifters).
 
 
 ### Using Combinators to Compose Multiple Sifters
@@ -87,7 +87,7 @@ func main() {
 }
 ```
 
-The complete list of available combinators and modifiers is [here]().
+The complete list of available combinators and modifiers is [here](https://github.com/jiftechnify/strfrui#list-of-sifter-combinators).
 
 ### Bringing Rate Limiter to Strfry
 
@@ -216,7 +216,7 @@ Rate limiting sifters in `ratelimit` package:
 
 ### List of sifter combinators
 
-All combinators is in `sifters` package.
+All combinators are in `sifters` package.
 
 #### `Pipeline(...sifters)`
 
