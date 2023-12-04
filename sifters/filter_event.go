@@ -103,6 +103,18 @@ func KindList(kinds []int, mode Mode) *sifterUnit {
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
+func TagsMatcher(matcher func(nostr.Tags) (bool, error), mode Mode) *sifterUnit {
+	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
+		return matchResultFromBool(matcher(input.Event.Tags))
+	}
+	defaultRejFn := rejectWithMsgPerMode(
+		mode,
+		"blocked: event tags don't match required patterns",
+		"blocked: event tags match forbidden patterns",
+	)
+	return newSifterUnit(matchInput, mode, defaultRejFn)
+}
+
 type fakeableClock struct {
 	fakeNow time.Time
 }

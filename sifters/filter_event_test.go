@@ -220,6 +220,51 @@ func TestKindList(t *testing.T) {
 	})
 }
 
+func TestTagsMatcher(t *testing.T) {
+	matcher := func(tags nostr.Tags) (bool, error) {
+		return tags.ContainsAny("p", []string{"hoge", "fuga"}), nil
+	}
+
+	t.Run("accepts if tags match the matcher", func(t *testing.T) {
+		s := TagsMatcher(matcher, Allow)
+
+		evs := []*nostr.Event{
+			{Tags: []nostr.Tag{{"p", "hoge", ""}}},
+			{Tags: []nostr.Tag{{"p", "fuga", ""}}},
+		}
+
+		for _, ev := range evs {
+			res, err := s.Sift(inputWithEvent(ev))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if res.Action != strfrui.ActionAccept {
+				t.Fatalf("unexpected result: %+v", res)
+			}
+		}
+	})
+
+	t.Run("rejects if tags don't match the matcher", func(t *testing.T) {
+		s := TagsMatcher(matcher, Allow)
+
+		evs := []*nostr.Event{
+			{Tags: []nostr.Tag{{"p", "foo", ""}}},
+			{Tags: []nostr.Tag{{"e", "evid", ""}}},
+			{Tags: []nostr.Tag{}},
+		}
+
+		for _, ev := range evs {
+			res, err := s.Sift(inputWithEvent(ev))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if res.Action != strfrui.ActionReject {
+				t.Fatalf("unexpected result: %+v", res)
+			}
+		}
+	})
+}
+
 func TestCreatedAtRange(t *testing.T) {
 	// fix "now" to unixtime 1000
 	clock.setFake(time.Unix(1000, 0))

@@ -212,6 +212,9 @@ Sifters in `sifters` package:
 - `KindMatcher(matcher, mode)`
 - `KindList(kinds, mode)`
 
+#### Match event `tags`
+- `TagsMatcher(matcher, mode)`
+
 #### Limit event timestamp (`created_at`)
 - `CreatedAtRange(timeRange, mode)`
 
