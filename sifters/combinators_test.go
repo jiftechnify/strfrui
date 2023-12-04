@@ -110,6 +110,56 @@ func TestPipeline(t *testing.T) {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
+
+	t.Run("OnlyIf modifier works as expected", func(t *testing.T) {
+		// if kind == 1, first rejectAll should be evaluated, so rest of the sifters should be ignored according to the semantics of OneOf.
+		// otherwise, evaluation of first acceptAll is expected to be skipped so second sifter should be evaluated.
+		s := Pipeline(
+			WithMod(rejectAll("rejected conditionally")).OnlyIf(KindList([]int{1}, Allow)),
+			rejectAll("skipped conditional sifter"),
+		)
+
+		res, err := s.Sift(inputWithEvent(&nostr.Event{Kind: 1}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionReject || res.Msg != "rejected conditionally" {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+
+		res, err = s.Sift(inputWithEvent(&nostr.Event{Kind: 2}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionReject || res.Msg != "skipped conditional sifter" {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+	})
+
+	t.Run("OnlyIfNot modifier works as expected", func(t *testing.T) {
+		// if kind != 1, first rejectAll should be evaluated, so rest of the sifters should be ignored according to the semantics of OneOf.
+		// otherwise, evaluation of first acceptAll is expected to be skipped so second sifter should be evaluated.
+		s := Pipeline(
+			WithMod(rejectAll("rejected conditionally")).OnlyIfNot(KindList([]int{1}, Allow)),
+			rejectAll("skipped conditional sifter"),
+		)
+
+		res, err := s.Sift(inputWithEvent(&nostr.Event{Kind: 2}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionReject || res.Msg != "rejected conditionally" {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+
+		res, err = s.Sift(inputWithEvent(&nostr.Event{Kind: 1}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Action != strfrui.ActionReject || res.Msg != "skipped conditional sifter" {
+			t.Fatalf("unexpected result: %+v", res)
+		}
+	})
 }
 
 func TestOneOf(t *testing.T) {
@@ -179,133 +229,59 @@ func TestOneOf(t *testing.T) {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
-}
 
-func TestIfThen(t *testing.T) {
-	t.Run("accepts if both `cond` and `body` accepts", func(t *testing.T) {
-		s := IfThen(
-			acceptAll,
-			acceptAll,
-		)
+	t.Run("OnlyIf modifier works as expected", func(t *testing.T) {
+		// if kind == 1, acceptAll should be evaluated, so rest of the sifters should be ignored according to the semantics of OneOf.
+		// otherwise, evaluation of acceptAll is expected to be skipped so second sifter should be evaluated.
+		s := OneOf(
+			WithMod(acceptAll).OnlyIf(KindList([]int{1}, Allow)),
+			rejectAll("skipped conditional sifter"),
+		).RejectWithMsg("OnlyIf works!")
 
-		res, err := s.Sift(dummyInput)
+		res, err := s.Sift(inputWithEvent(&nostr.Event{Kind: 1}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if res.Action != strfrui.ActionAccept {
 			t.Fatalf("unexpected result: %+v", res)
 		}
-	})
 
-	t.Run("rejects if `cond` accepts and `body` rejects", func(t *testing.T) {
-		s := IfThen(
-			acceptAll,
-			rejectAll("body rejects"),
-		)
-
-		res, err := s.Sift(dummyInput)
+		res, err = s.Sift(inputWithEvent(&nostr.Event{Kind: 2}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
-		if res.Msg != "body rejects" {
+		if res.Msg != "OnlyIf works!" {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
 
-	t.Run("accepts if `cond` rejects and `body` accepts", func(t *testing.T) {
-		s := IfThen(
-			rejectAll("cond rejects"),
-			acceptAll,
-		)
+	t.Run("OnlyIfNot modifier works as expected", func(t *testing.T) {
+		s := OneOf(
+			// if kind != 1, acceptAll should be evaluated, so rest of the sifters should be ignored according to the semantics of OneOf.
+			// otherwise, evaluation of acceptAll is expected to be skipped so second sifter should be evaluated.
+			WithMod(acceptAll).OnlyIfNot(KindList([]int{1}, Allow)),
+			rejectAll("skipped conditional sifter"),
+		).RejectWithMsg("OnlyIfNot works!")
 
-		res, err := s.Sift(dummyInput)
+		res, err := s.Sift(inputWithEvent(&nostr.Event{Kind: 2}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if res.Action != strfrui.ActionAccept {
 			t.Fatalf("unexpected result: %+v", res)
 		}
-	})
 
-	t.Run("accepts if both `cond` and `body` rejects", func(t *testing.T) {
-		s := IfThen(
-			rejectAll("cond rejects"),
-			rejectAll("body also rejects"),
-		)
-
-		res, err := s.Sift(dummyInput)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if res.Action != strfrui.ActionAccept {
-			t.Fatalf("unexpected result: %+v", res)
-		}
-	})
-}
-
-func TestIfNotThen(t *testing.T) {
-	t.Run("accepts if both `cond` and `body` accepts", func(t *testing.T) {
-		s := IfNotThen(
-			acceptAll,
-			acceptAll,
-		)
-
-		res, err := s.Sift(dummyInput)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if res.Action != strfrui.ActionAccept {
-			t.Fatalf("unexpected result: %+v", res)
-		}
-	})
-
-	t.Run("accepts if `cond` accepts and `body` rejects", func(t *testing.T) {
-		s := IfNotThen(
-			acceptAll,
-			rejectAll("body rejects"),
-		)
-
-		res, err := s.Sift(dummyInput)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if res.Action != strfrui.ActionAccept {
-			t.Fatalf("unexpected result: %+v", res)
-		}
-	})
-
-	t.Run("accepts if `cond` rejects and `body` accepts", func(t *testing.T) {
-		s := IfNotThen(
-			rejectAll("cond rejects"),
-			acceptAll,
-		)
-
-		res, err := s.Sift(dummyInput)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if res.Action != strfrui.ActionAccept {
-			t.Fatalf("unexpected result: %+v", res)
-		}
-	})
-
-	t.Run("rejects if both `cond` and `body` rejects", func(t *testing.T) {
-		s := IfNotThen(
-			rejectAll("cond rejects"),
-			rejectAll("body also rejects"),
-		)
-
-		res, err := s.Sift(dummyInput)
+		res, err = s.Sift(inputWithEvent(&nostr.Event{Kind: 1}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if res.Action != strfrui.ActionReject {
 			t.Fatalf("unexpected result: %+v", res)
 		}
-		if res.Msg != "body also rejects" {
+		if res.Msg != "OnlyIfNot works!" {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})

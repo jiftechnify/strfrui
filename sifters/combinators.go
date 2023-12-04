@@ -16,6 +16,18 @@ func (s *pipelineSifter) Sift(input *strfrui.Input) (*strfrui.Result, error) {
 		err error
 	)
 	for _, child := range s.children {
+		if child.onlyIfCond != nil {
+			// if condition is specified and it isn't met, skip this child
+			condMet, err := child.onlyIfCond.evalCond(input)
+			if err != nil {
+				return nil, err
+			}
+			if !condMet {
+				// log.Printf("[pipeline %s] %q not applied because condition not met", s.name, child.label)
+				continue
+			}
+		}
+
 		res, err = child.Sift(input)
 
 		if err != nil {
@@ -54,6 +66,18 @@ func (s *oneOfSifter) Sift(input *strfrui.Input) (*strfrui.Result, error) {
 		err error
 	)
 	for _, child := range s.children {
+		if child.onlyIfCond != nil {
+			// if condition is specified and it isn't met, skip this child
+			condMet, err := child.onlyIfCond.evalCond(input)
+			if err != nil {
+				return nil, err
+			}
+			if !condMet {
+				// log.Printf("[oneOf %s] %q not applied because condition not met", s.name, child.label)
+				continue
+			}
+		}
+
 		res, err = child.Sift(input)
 
 		if err != nil {
@@ -90,46 +114,12 @@ func OneOf(ss ...strfrui.Sifter) *oneOfSifter {
 	}
 }
 
-type ifThenSifter struct {
-	ifAccepted bool
-	cond       strfrui.Sifter
-	body       strfrui.Sifter
-}
-
-func (s *ifThenSifter) Sift(input *strfrui.Input) (*strfrui.Result, error) {
-	condRes, err := s.cond.Sift(input)
-	if err != nil {
-		return nil, err
-	}
-
-	shouldApplyBody := s.ifAccepted == (condRes.Action == strfrui.ActionAccept)
-	if !shouldApplyBody {
-		return input.Accept()
-	}
-	return s.body.Sift(input)
-}
-
-func IfThen(cond, body strfrui.Sifter) *ifThenSifter {
-	return &ifThenSifter{
-		ifAccepted: true,
-		cond:       cond,
-		body:       body,
-	}
-}
-
-func IfNotThen(cond, body strfrui.Sifter) *ifThenSifter {
-	return &ifThenSifter{
-		ifAccepted: false,
-		cond:       cond,
-		body:       body,
-	}
-}
-
 // sifter with modifiers that change its behavior (especially in Pipeline)
 type moddedSifter struct {
 	s           strfrui.Sifter
-	label       string // label for the sifter (used in logs)
-	acceptEarly bool   // if true and underlying sifter accepts, Pipeline returns early
+	label       string      // label for the sifter (used in logs)
+	acceptEarly bool        // if true and underlying sifter accepts, Pipeline returns early
+	onlyIfCond  *onlyIfCond // if non-nil, the sifter is only applied if the condition is met
 }
 
 func (s *moddedSifter) Sift(input *strfrui.Input) (*strfrui.Result, error) {
@@ -156,6 +146,38 @@ func (s *moddedSifter) Label(label string) *moddedSifter {
 // If sifters with "accept early" flag are used in Pipeline sifters and they accept event, pipelines return early (unconditionally accept the event without further judgements).
 func (s *moddedSifter) AcceptEarly() *moddedSifter {
 	s.acceptEarly = true
+	return s
+}
+
+type onlyIfCond struct {
+	cond       strfrui.Sifter
+	ifAccepted bool
+}
+
+func (s *onlyIfCond) evalCond(input *strfrui.Input) (bool, error) {
+	res, err := s.cond.Sift(input)
+	if err != nil {
+		return false, err
+	}
+	if s.ifAccepted == (res.Action == strfrui.ActionAccept) {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (s *moddedSifter) OnlyIf(cond strfrui.Sifter) *moddedSifter {
+	s.onlyIfCond = &onlyIfCond{
+		cond:       cond,
+		ifAccepted: true,
+	}
+	return s
+}
+
+func (s *moddedSifter) OnlyIfNot(cond strfrui.Sifter) *moddedSifter {
+	s.onlyIfCond = &onlyIfCond{
+		cond:       cond,
+		ifAccepted: false,
+	}
 	return s
 }
 

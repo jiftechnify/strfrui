@@ -10,9 +10,9 @@ go get github.com/jiftechnify/strfrui
 ```
 
 ## Features
+* Offers **out-of-the-box** event-sifters, including **rate limiters**.
+* **Sifter combinators**: you can build own event-sifters by composing small parts together.
 * Gives you foundations for writing a custom event-sifter as a simple function and running it.
-* Offers out-of-the-box event-sifters, including rate limiters.
-* Sifter combinators: you can build own event-sifters by composing small parts together.
 
 ## Examples
 ### Using Out-of-the-Box Sifters
@@ -32,9 +32,9 @@ var whiteList = []string{
 }
 
 func main() {
-    // initialize a strfrui.Runner with 
-    // an event-sifter that accepts events from pubkeys in the whitelist
-    // then start the sifting routine
+    // Initializing a strfrui.Runner with an event-sifter
+    // that accepts events from pubkeys in the whitelist.
+    // Then, start the sifting routine by calling Run().
     strfrui.New(sifters.AuthorList(whiteList, sifters.Allow)).Run()
 }
 ```
@@ -56,23 +56,23 @@ import (
     "github.com/jiftechnify/strfrui/sifters"
 )
 
-const adminPubkey = "admin"
-var blacklist = []string{"spammer", "scammer"}
+var (
+    adminList = []string{"admin"}
+    blacklist = []string{"spammer", "scammer"}
+)
 
 func main() {
-    acceptAdmin := sifters.AuthorList([]string{adminPubkey}, sifters.Allow)
+    acceptAdmin := sifters.AuthorList(adminList, sifters.Allow)
     rejectBlacklist := sifters.AuthorList(blacklist, sifters.Deny)
 
-    nostrPostsOnly := sifters.IfThen(
-        sifters.KindList(          // if kind == 1 ...
-            []int{1},
-            sifters.Allow
-        ), 
-        sifters.ContentHasAnyWord( // its content must contain the word "nostr"
-            []string{"nostr"},     // (otherwise, always accept)
-            sifters.Allow,
-        ), 
-    )                                                                
+    // sifters.WithMod() makes sifters modifiable. 
+    // Sifter modification changes sifter's bahavior within combinators.
+    // Here is an example of using OnlyIf() modifier.
+    // * base sifter says: event’s content must contain the word "nostr".
+    // * OnlyIf(...) says: restriction above applies to only kind 1 events.
+    nostrPostsOnly := sifters.WithMod(
+        sifters.ContentHasAnyWord([]string{"nostr"}, sifters.Allow)
+    ).OnlyIf(sifters.KindList([]int{1}, sifters.Allow))
 
     finalSifter := sifters.      // finalSifter accepts if...
         OneOf(                   // the input satisfies *one of* conditions:
@@ -82,13 +82,12 @@ func main() {
                 nostrPostsOnly,  //    b. if kind == 1, its content must contain the word "nostr"
             ),
         )
-
     // run the finalSifter!
     strfrui.New(finalSifter).Run()
 }
 ```
 
-The complete list of available combinators is [here]().
+The complete list of available combinators and modifiers is [here]().
 
 ### Bringing Rate Limiter to Strfry
 
@@ -115,12 +114,20 @@ func main() {
 }
 ```
 
-You may want to use `ratelimit.ByUserAndKind` to impose different limit for diffrent event kinds.
+You may want to use `ratelimit.ByUserAndKind` to impose different limits for diffrent event kinds.
 
 
 ### Writing Custom Sifter from Scratch
 
-Essentially, event-sifter is just a function that takes an "input" (event + metadata of event source etc.) and returns "result" (action to take on the event: accept or reject). If you feel cumbersome to build sifters you want by combining small blocks, you can still implement overall sifter logic as a Go function. Of course, sifters written in such a way are also composable using the combinators!
+Essentially, event-sifter is just a function that takes an "input" (event + metadata of event source etc.) and returns "result" (action to take on the event: accept or reject). 
+
+```go
+type Sifter interface {
+    Sift (*strfrui.Input) (*strfrui.Result, error)
+}
+```
+
+If you feel cumbersome to build sifters you want by combining small blocks, you can still implement overall sifter logic as a Go function. Of course, sifters written in such a way are also composable using the combinators!
 
 The code below is a example of writing event-sifter as a function.  The logic is equivalent to the sifter in the first example, but it adds custom logging.
 
@@ -155,45 +162,12 @@ func main() {
 ```
 
 ## Details
-### List of sifter combinators
+### About the `mode` parameter of built-in sifters
 
-All combinators is in `sifters` package.
+Most of built-in event-sifters take `mode` parameter that specifies the behavior of sifters when an input matches given condition.
 
-#### `Pipeline(...sifters)`
-
-Combines a list of sifters into one. The resulting sifter accepts an input if *all* sub-sifters accept it. 
-
-If any sub-sifter rejects the input, the combined sifter rejects with the result from the rejecting sub-sifter.
-
-#### `OneOf(...sifters)`
-
-Combines a list of sifters into one. The resulting sifter accepts an input if *one of* sub-sifters accepts it.
-
-If all sub-sifters rejects the input, the combined sifter rejects with message: `"blocked: any of sub-sifters didn't accept the event"` by default. You can customize rejection behavior by calling `.RejectWithMsg()/.RejectWithMsgFromInput()/.ShadowReject()` methods on it.
-
-#### `IfThen(cond, body)`
-
-*Only if* the first sifter (`cond`) *accepts* an input, evaluates the second one (`body`) to determine whether the input should be accepted or not. If the first one *rejects*, overall sifter accepts.
-
-You can roughly think it as:
-
-```go
-if (cond(input)) {
-    return body(input)
-}
-```
-
-#### `IfNotThen(cond, body)`
-
-*Only if* the first sifter (`cond`) *rejects* an input, evaluates the second one (`body`) to determine whether the input should be accepted or not. If the first one *accepts*, overall sifter accepts.
-
-You can roughly think it as:
-
-```go
-if (!cond(input)) {
-    return body(input)
-}
-```
+- `sifters.Allow`: *Accept* the input if it matches given conditions ("whitelist").
+- `sifters.Deny`: *Reject* the input if it matches given conditions ("blacklist").
 
 
 ### List of built-in event-sifters
@@ -239,12 +213,43 @@ Rate limiting sifters in `ratelimit` package:
 - `ByUser(quota, userKey)`
 - `ByUserAndKind(quotas, userKey)`
 
-### About the `mode` parameter of built-in sifters
 
-Most of built-in event-sifters take `mode` parameter that specifies the behavior of sifters when an input matches given condition. Available `mode`s are:
+### List of sifter combinators
 
-- `sifters.Allow`: *Accept* the input if it matches given conditions ("whitelist").
-- `sifters.Deny`: *Reject* the input if it matches given conditions ("blacklist").
+All combinators is in `sifters` package.
+
+#### `Pipeline(...sifters)`
+
+Combines a list of sifters into one. The resulting sifter accepts an input if *all* sub-sifters accept it. 
+
+If any sub-sifter rejects the input, the combined sifter rejects with the result from the rejecting sub-sifter.
+
+#### `OneOf(...sifters)`
+
+Combines a list of sifters into one. The resulting sifter accepts an input if *one of* sub-sifters accepts it.
+
+If all sub-sifters rejects the input, the combined sifter rejects with message: `"blocked: any of sub-sifters didn't accept the event"` by default. You can customize rejection behavior by calling `.RejectWithMsg()/.RejectWithMsgFromInput()/.ShadowReject()` methods on it.
+
+
+### List of sifter modifiers
+
+Sifter modifiers modifies behavior of the underlying sifter when it is composed via sifter combinators.
+
+You can start modification by wrapping a sifter with `sifters.WithMod(sifter)`, then chain method calls on the wrapper.
+
+#### `.AcceptEarly()`
+
+If a sifter modified by `.AcceptEarly()` are used in `Pipeline(...)` and the modified sifter accepts an event, the overall pipeline accepts it immediately, and all sifters after that sifter are skipped.
+
+#### `.OnlyIf(cond) / .OnlyIfNot(cond)`
+
+If a sifter modified by `.OnlyIf(cond)` are used in `Pipeline(...)` or `OneOf(...)`, the combined sifter first applies `cond` to an input. Then,
+- if `cond` *accepts* the input, the modified sifter is applied to the input normally.
+- if `cond` *rejects* the input, the modified sifter is *skipped* and move to next.
+
+`.OnlyIfNot(cond)` is opposite of `.OnlyIf(cond)`.
+
+`cond` can be arbitrary event-sifter. 
 
 
 ## License
