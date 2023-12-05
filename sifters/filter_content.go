@@ -7,7 +7,10 @@ import (
 	"github.com/jiftechnify/strfrui"
 )
 
-func ContentMatcher(matcher func(string) (bool, error), mode Mode) *sifterUnit {
+// ContentMatcher makes an event-sifter that matches a content of a Nostr event with the matcher function.
+//
+// If the matcher returns non-nil error, this sifter always rejects the input.
+func ContentMatcher(matcher func(string) (bool, error), mode Mode) *SifterUnit {
 	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		return matchResultFromBool(matcher(i.Event.Content))
 	}
@@ -19,7 +22,10 @@ func ContentMatcher(matcher func(string) (bool, error), mode Mode) *sifterUnit {
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func ContentHasAnyWord(words []string, mode Mode) *sifterUnit {
+// ContentHasAnyWord makes an event-sifter that checks if a content of a Nostr event has any word in the given list.
+//
+// Note that it performs case-sensitive match.
+func ContentHasAnyWord(words []string, mode Mode) *SifterUnit {
 	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		for _, word := range words {
 			if strings.Contains(i.Event.Content, word) {
@@ -36,7 +42,10 @@ func ContentHasAnyWord(words []string, mode Mode) *sifterUnit {
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func ContentHasAllWords(words []string, mode Mode) *sifterUnit {
+// ContentHasAllWords makes an event-sifter that checks if a content of a Nostr event has all words in the given list.
+//
+// Note that it performs case-sensitive match.
+func ContentHasAllWords(words []string, mode Mode) *SifterUnit {
 	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		for _, word := range words {
 			if !strings.Contains(i.Event.Content, word) {
@@ -52,7 +61,8 @@ func ContentHasAllWords(words []string, mode Mode) *sifterUnit {
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func ContentMatchesAnyRegexp(regexps []*regexp.Regexp, mode Mode) *sifterUnit {
+// ContentMatchesAnyRegexp makes an event-sifter that checks if a content of a Nostr event matches any of the given list of regular expressions.
+func ContentMatchesAnyRegexp(regexps []*regexp.Regexp, mode Mode) *SifterUnit {
 	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		for _, r := range regexps {
 			if r.MatchString(i.Event.Content) {
@@ -69,7 +79,8 @@ func ContentMatchesAnyRegexp(regexps []*regexp.Regexp, mode Mode) *sifterUnit {
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func ContentMatchesAllRegexps(regexps []*regexp.Regexp, mode Mode) *sifterUnit {
+// ContentMatchesAllRegexps makes an event-sifter that checks if a content of a Nostr event matches all of the given list of regular expressions.
+func ContentMatchesAllRegexps(regexps []*regexp.Regexp, mode Mode) *SifterUnit {
 	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		for _, r := range regexps {
 			if !r.MatchString(i.Event.Content) {

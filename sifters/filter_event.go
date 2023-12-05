@@ -9,7 +9,8 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
-func MatchesFilters(filters []nostr.Filter, mode Mode) *sifterUnit {
+// MatchesFilters makes an event-sifter that matches a Nostr event against the given Nostr filters.
+func MatchesFilters(filters []nostr.Filter, mode Mode) *SifterUnit {
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		return matchResultFromBool(nostr.Filters(filters).Match(input.Event), nil)
 	}
@@ -21,7 +22,10 @@ func MatchesFilters(filters []nostr.Filter, mode Mode) *sifterUnit {
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func AuthorMatcher(matcher func(string) (bool, error), mode Mode) *sifterUnit {
+// AuthorMatcher makes an event-sifter that matches the author (pubkey) of a Nostr event with the given matcher function.
+//
+// If the matcher returns non-nil error, this sifter always rejects the input.
+func AuthorMatcher(matcher func(string) (bool, error), mode Mode) *SifterUnit {
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		return matchResultFromBool(matcher(input.Event.PubKey))
 	}
@@ -33,7 +37,8 @@ func AuthorMatcher(matcher func(string) (bool, error), mode Mode) *sifterUnit {
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func AuthorList(authors []string, mode Mode) *sifterUnit {
+// AuthorList makes an event-sifter that checks if the author (pubkey) of a Nostr event is in the given list.
+func AuthorList(authors []string, mode Mode) *SifterUnit {
 	authorSet := utils.SliceToSet(authors)
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		_, ok := authorSet[input.Event.PubKey]
@@ -70,7 +75,10 @@ var (
 	}
 )
 
-func KindMatcherFallible(matcher func(int) (bool, error), mode Mode) *sifterUnit {
+// KindMatcherFallible makes an event-sifter that matches the kind of a Nostr event with the given matcher function that is fallible (i.e. can return error).
+//
+// If the matcher returns non-nil error, this sifter always rejects the input.
+func KindMatcherFallible(matcher func(int) (bool, error), mode Mode) *SifterUnit {
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		return matchResultFromBool(matcher(input.Event.Kind))
 	}
@@ -82,14 +90,19 @@ func KindMatcherFallible(matcher func(int) (bool, error), mode Mode) *sifterUnit
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func KindMatcher(matcher func(int) bool, mode Mode) *sifterUnit {
+// KindMatcher makes an event-sifter that matches the kind of a Nostr event with the given matcher function.
+//
+// Note that the matcher function can't return any error unlike other XxxMathcer sifters.
+// To use a fallible matcher, you may want to [KindMatcherFallible] instead.
+func KindMatcher(matcher func(int) bool, mode Mode) *SifterUnit {
 	matcherf := func(k int) (bool, error) {
 		return matcher(k), nil
 	}
 	return KindMatcherFallible(matcherf, mode)
 }
 
-func KindList(kinds []int, mode Mode) *sifterUnit {
+// KindList makes an event-sifter that checks if the kind of a Nostr event is in the given list.
+func KindList(kinds []int, mode Mode) *SifterUnit {
 	kindSet := utils.SliceToSet(kinds)
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		_, ok := kindSet[input.Event.Kind]
@@ -103,7 +116,11 @@ func KindList(kinds []int, mode Mode) *sifterUnit {
 	return newSifterUnit(matchInput, mode, defaultRejFn)
 }
 
-func TagsMatcher(matcher func(nostr.Tags) (bool, error), mode Mode) *sifterUnit {
+// TagsMatcher makes an event-sifter that matches the tag list of a Nostr event with the given matcher function.
+// You can utilize various matching methods on [github.com/nbd-wtf/go-nostr.Tags] in the matcher.
+//
+// If the matcher returns non-nil error, this sifter always rejects the input.
+func TagsMatcher(matcher func(nostr.Tags) (bool, error), mode Mode) *SifterUnit {
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		return matchResultFromBool(matcher(input.Event.Tags))
 	}
@@ -138,11 +155,15 @@ func (c *fakeableClock) reset() {
 	c.fakeNow = time.Time{}
 }
 
+// RelativeTimeRange represents a time range defined as a pair of maximum allowed duration in the past and future.
+//
+// Either of the durations can be zero (or left unspecified), means the corresponding side of the range is unbounded.
 type RelativeTimeRange struct {
 	maxPastDelta   time.Duration
 	maxFutureDelta time.Duration
 }
 
+// Contains checks if the given time is in the time range.
 func (r RelativeTimeRange) Contains(t time.Time) bool {
 	now := clock.now()
 
@@ -152,6 +173,7 @@ func (r RelativeTimeRange) Contains(t time.Time) bool {
 	return okPast && okFuture
 }
 
+// String returns a string representation of the time range.
 func (r RelativeTimeRange) String() string {
 	left := "-∞"
 	if r.maxPastDelta != 0 {
@@ -164,7 +186,8 @@ func (r RelativeTimeRange) String() string {
 	return fmt.Sprintf("[%s, %s]", left, right)
 }
 
-func CreatedAtRange(timeRange RelativeTimeRange, mode Mode) *sifterUnit {
+// CreatedAtRange makes an event-sifter that checks if the creation timestamp (created_at) of a Nostr event is in the given time range.
+func CreatedAtRange(timeRange RelativeTimeRange, mode Mode) *SifterUnit {
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		createdAt := input.Event.CreatedAt.Time()
 		return matchResultFromBool(timeRange.Contains(createdAt), nil)

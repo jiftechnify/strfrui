@@ -10,7 +10,13 @@ import (
 	"github.com/jiftechnify/strfrui"
 )
 
-func SourceIPMatcher(matcher func(netip.Addr) (bool, error), mode Mode, modeForUnknownSource Mode) *sifterUnit {
+// SourceIPMatcher makes an event-sifter that matches the source IP address of a Nostr event with the matcher function.
+// modeForUnknownSource specifies the behavior when the source IP address can't be determied.
+//
+// Note that this sifter always accepts events not from end-users (i.e. events imported from other relays).
+//
+// If the matcher returns non-nil error, this sifter always rejects the input.
+func SourceIPMatcher(matcher func(netip.Addr) (bool, error), mode Mode, modeForUnknownSource Mode) *SifterUnit {
 	matchInput := func(i *strfrui.Input) (inputMatchResult, error) {
 		if !i.SourceType.IsEndUser() {
 			return inputAlwaysAccept, nil
@@ -50,10 +56,19 @@ func matchWithIPPrefixList(prefixes []netip.Prefix) func(netip.Addr) (bool, erro
 	}
 }
 
-func SourceIPPrefixList(ipPrefixes []netip.Prefix, mode Mode, modeForUnknownSource Mode) *sifterUnit {
+// SourceIPPrefixList makes an event-sifter that checks the source IP address of a Nostr event with list of IP address prefixes (CIDRs).
+// modeForUnknownSource specifies the behavior when the source IP address can't be determied.
+//
+// You can use [ParseStringIPList] to parse a list of string IP address and CIDRs.
+//
+// Note that this sifter always accepts events not from end-users (i.e. events imported from other relays).
+func SourceIPPrefixList(ipPrefixes []netip.Prefix, mode Mode, modeForUnknownSource Mode) *SifterUnit {
 	return SourceIPMatcher(matchWithIPPrefixList(ipPrefixes), mode, modeForUnknownSource)
 }
 
+// ParseStringIPList parses a list of IP address and CIDRs in string form as a list of [netip.Prefix].
+//
+// IP addresses (without "/") are treated as IP prefixes that only contain the very address (e.g. 192.168.1.1 → 192.168.1.1/32, 2001:db8::1 → 2001:db8::1/128).
 func ParseStringIPList(strIPs []string) ([]netip.Prefix, error) {
 	prefixes := make([]netip.Prefix, 0, len(strIPs))
 	for _, strIP := range strIPs {

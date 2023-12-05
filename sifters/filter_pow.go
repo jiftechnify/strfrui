@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jiftechnify/strfrui"
+	"github.com/jiftechnify/strfrui/sifters/internal"
 )
 
 var nibbleToLzs = map[rune]uint{
@@ -29,7 +30,13 @@ func leadingZerosOfEventID(id string) (uint, error) {
 	return res, nil
 }
 
-func PoWMinDifficulty(minDifficulty uint) *sifterUnit {
+// PoWMinDifficulty makes an event-sifter that checks if the Proof of Work (PoW) difficulty of a Nostr event
+// is higher than or equal to the given minimum difficulty.
+//
+// About PoW for Nostr events, see [NIP-13]. Note that this sifter doesn't check if the "target difficulty" declared by the nonce tag is achieved.
+//
+// [NIP-13]: https://github.com/nostr-protocol/nips/blob/master/13.md
+func PoWMinDifficulty(minDifficulty uint) *SifterUnit {
 	matchInput := func(input *strfrui.Input) (inputMatchResult, error) {
 		difficulty, err := leadingZerosOfEventID(input.Event.ID)
 		if err != nil {
@@ -37,6 +44,6 @@ func PoWMinDifficulty(minDifficulty uint) *sifterUnit {
 		}
 		return matchResultFromBool(difficulty >= minDifficulty, nil)
 	}
-	defaultRejFn := RejectWithMsg(fmt.Sprintf("pow: difficulty is less than %d", minDifficulty))
+	defaultRejFn := internal.RejectWithMsg(fmt.Sprintf("pow: difficulty is less than %d", minDifficulty))
 	return newSifterUnit(matchInput, Allow, defaultRejFn)
 }

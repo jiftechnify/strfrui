@@ -8,29 +8,41 @@ import (
 	"time"
 
 	"github.com/jiftechnify/strfrui"
-	"github.com/jiftechnify/strfrui/sifters"
+	"github.com/jiftechnify/strfrui/sifters/internal"
 	"github.com/throttled/throttled/v2"
 	"github.com/throttled/throttled/v2/store/memstore"
 )
 
-type userKey int
+// UserKey specifies what key should we use to identify a user for per-user rate limiting.
+type UserKey int
 
 const (
-	IPAddr userKey = iota + 1
+	// Use the source IP address of an input as an user identifier.
+	// In this mode, rate limit is not applied if the source of events can't be determined.
+	IPAddr UserKey = iota + 1
+
+	// Use the pubkey of an event as an user identifier.
 	PubKey
 )
 
 type selectRateLimiterFn func(*strfrui.Input) throttled.RateLimiterCtx
 type rateLimitKeyDeriveFn func(*strfrui.Input) (shouldLimit bool, key string)
 
-type sifterUnit struct {
+// SifterUnit is base structure of rate-limiting event-sifter logic.
+//
+// If it comes to reject inputs, each built-in sifter responds to the client with its own predefined message.
+// If you want to customize the rejection behavior,
+// use [SifterUnit.RejectWithMsg], [SifterUnit.RejectWithMsgFromInput] or [SifterUnit.ShadowReject].
+//
+// This type is exposed only for document organization purpose. You shouldn't initialize this struct directly.
+type SifterUnit struct {
 	selectLimiter  selectRateLimiterFn
 	deriveLimitKey rateLimitKeyDeriveFn
 	exclude        func(*strfrui.Input) bool
-	reject         sifters.RejectionFn
+	reject         internal.RejectionFn
 }
 
-func (s *sifterUnit) Sift(input *strfrui.Input) (*strfrui.Result, error) {
+func (s *SifterUnit) Sift(input *strfrui.Input) (*strfrui.Result, error) {
 	if s.exclude(input) {
 		return input.Accept()
 	}
@@ -56,36 +68,46 @@ func (s *sifterUnit) Sift(input *strfrui.Input) (*strfrui.Result, error) {
 	return input.Accept()
 }
 
-func (s *sifterUnit) Exclude(exclude func(*strfrui.Input) bool) *sifterUnit {
+// Exclude makes the rate-limiting sifter exclude inputs that match given function from rate-limiting.
+func (s *SifterUnit) Exclude(exclude func(*strfrui.Input) bool) *SifterUnit {
 	s.exclude = exclude
 	return s
 }
 
-func (s *sifterUnit) ShadowReject() *sifterUnit {
-	s.reject = sifters.ShadowReject
+// ShadowReject sets the sifter's rejection behavior to "shadow-reject",
+// which pretend to accept the input but actually reject it.
+func (s *SifterUnit) ShadowReject() *SifterUnit {
+	s.reject = internal.ShadowReject
 	return s
 }
 
-func (s *sifterUnit) RejectWithMsg(msg string) *sifterUnit {
-	s.reject = sifters.RejectWithMsg(msg)
+// RejectWithMsg makes the sifter reject the input with the given message.
+func (s *SifterUnit) RejectWithMsg(msg string) *SifterUnit {
+	s.reject = internal.RejectWithMsg(msg)
 	return s
 }
 
-func (s *sifterUnit) RejectWithMsgFromInput(getMsg func(*strfrui.Input) string) *sifterUnit {
-	s.reject = sifters.RejectWithMsgFromInput(getMsg)
+// RejectWithMsgFromInput makes the sifter reject the input with the message derived from the input by the given function.
+func (s *SifterUnit) RejectWithMsgFromInput(getMsg func(*strfrui.Input) string) *SifterUnit {
+	s.reject = internal.RejectWithMsgFromInput(getMsg)
 	return s
 }
 
-func newSifterUnit(selectLimiter selectRateLimiterFn, deriveLimitKey rateLimitKeyDeriveFn) *sifterUnit {
-	return &sifterUnit{
+func newSifterUnit(selectLimiter selectRateLimiterFn, deriveLimitKey rateLimitKeyDeriveFn) *SifterUnit {
+	return &SifterUnit{
 		selectLimiter:  selectLimiter,
 		deriveLimitKey: deriveLimitKey,
 		exclude:        func(i *strfrui.Input) bool { return false },
-		reject:         sifters.RejectWithMsg("rate-limited: rate limit exceeded"),
+		reject:         internal.RejectWithMsg("rate-limited: rate limit exceeded"),
 	}
 }
 
-func ByUser(quota Quota, uk userKey) *sifterUnit {
+// ByUser creates a event-sifter that imposes rate limit on event write request per user.
+//
+// "User" is identified by the source IP address or the pubkey of the event, depending on the given [UserKey].
+//
+// Note that this doesn't impose a rate limit to events not from end-users (i.e. events imported from other relays).
+func ByUser(quota Quota, uk UserKey) *SifterUnit {
 	store, _ := memstore.NewCtx(65536)
 	rateLimiter, err := throttled.NewGCRARateLimiterCtx(store, quota)
 	if err != nil {
@@ -117,9 +139,14 @@ type rateLimiterPerKind struct {
 	rateLimiter throttled.RateLimiterCtx
 }
 
-// rate-limiting event sifter with variable quotas per conditions
-// if no quota matches, the event is accepted
-func ByUserAndKind(quotas []KindQuota, uk userKey) *sifterUnit {
+// ByUserAndKind creates a event-sifter that imposes rate limit on event write request per user and event kind.
+// The quota for each event kind is specified by the given list of [KindQuota].
+// For event kinds for which a quota is not defined, no rate limit is imposed.
+//
+// "User" is identified by the source IP address or the pubkey of the event, depending on the given [UserKey].
+//
+// Note that this doesn't impose a rate limit to events not from end-users (i.e. events imported from other relays).
+func ByUserAndKind(quotas []KindQuota, uk UserKey) *SifterUnit {
 	store, _ := memstore.NewCtx(65536)
 	limiters := make([]rateLimiterPerKind, 0, len(quotas))
 	for _, kq := range quotas {

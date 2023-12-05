@@ -4,14 +4,72 @@ import (
 	"log"
 
 	"github.com/jiftechnify/strfrui"
+	"github.com/jiftechnify/strfrui/sifters/internal"
 )
 
+// Mode specifies the behavior of sifters when input matches the condition defined by the sifter:
+//
+//   - Allow: Accept the input if the input matches the condition (i.e. whitelist).
+//   - Deny: Reject the input if the input matches the condition (i.e. blacklist).
 type Mode int
 
 const (
 	Allow Mode = iota + 1
 	Deny
 )
+
+type inputMatcher func(*strfrui.Input) (inputMatchResult, error)
+
+// SifterUnit is base structure of composable event-sifter logic. All built-in sifters are instances of this struct.
+//
+// If it comes to reject inputs, each built-in sifter responds to the client with its own predefined message.
+// If you want to customize the rejection behavior,
+// use [SifterUnit.RejectWithMsg], [SifterUnit.RejectWithMsgFromInput] or [SifterUnit.ShadowReject].
+//
+// This type is exposed only for document organization purpose. You shouldn't initialize this struct directly.
+type SifterUnit struct {
+	match  inputMatcher
+	mode   Mode
+	reject internal.RejectionFn
+}
+
+func (s *SifterUnit) Sift(input *strfrui.Input) (*strfrui.Result, error) {
+	matched, err := s.match(input)
+	if err != nil {
+		return nil, err
+	}
+	if shouldAccept(matched, s.mode) {
+		return input.Accept()
+	}
+	return s.reject(input), nil
+}
+
+// ShadowReject sets the sifter's rejection behavior to "shadow-reject",
+// which pretend to accept the input but actually reject it.
+func (s *SifterUnit) ShadowReject() *SifterUnit {
+	s.reject = internal.ShadowReject
+	return s
+}
+
+// RejectWithMsg makes the sifter reject the input with the given message.
+func (s *SifterUnit) RejectWithMsg(msg string) *SifterUnit {
+	s.reject = internal.RejectWithMsg(msg)
+	return s
+}
+
+// RejectWithMsgFromInput makes the sifter reject the input with the message derived from the input by the given function.
+func (s *SifterUnit) RejectWithMsgFromInput(getMsg func(*strfrui.Input) string) *SifterUnit {
+	s.reject = internal.RejectWithMsgFromInput(getMsg)
+	return s
+}
+
+func newSifterUnit(matchInput inputMatcher, mode Mode, defaultRejFn internal.RejectionFn) *SifterUnit {
+	return &SifterUnit{
+		match:  matchInput,
+		mode:   mode,
+		reject: defaultRejFn,
+	}
+}
 
 type inputMatchResult int
 
@@ -68,35 +126,6 @@ func shouldAccept(matchRes inputMatchResult, mode Mode) bool {
 	}
 }
 
-type RejectionFn func(*strfrui.Input) *strfrui.Result
-
-var ShadowReject = func(input *strfrui.Input) *strfrui.Result {
-	return &strfrui.Result{
-		ID:     input.Event.ID,
-		Action: strfrui.ActionShadowReject,
-	}
-}
-
-func RejectWithMsg(msg string) RejectionFn {
-	return func(input *strfrui.Input) *strfrui.Result {
-		return &strfrui.Result{
-			ID:     input.Event.ID,
-			Action: strfrui.ActionReject,
-			Msg:    msg,
-		}
-	}
-}
-
-func RejectWithMsgFromInput(getMsg func(*strfrui.Input) string) RejectionFn {
-	return func(input *strfrui.Input) *strfrui.Result {
-		return &strfrui.Result{
-			ID:     input.Event.ID,
-			Action: strfrui.ActionReject,
-			Msg:    getMsg(input),
-		}
-	}
-}
-
 func selectMsgByMode(mode Mode, msgAllow, msgDeny string) string {
 	var msg string
 	switch mode {
@@ -108,49 +137,7 @@ func selectMsgByMode(mode Mode, msgAllow, msgDeny string) string {
 	return msg
 }
 
-func rejectWithMsgPerMode(mode Mode, msgAllow, msgDeny string) RejectionFn {
+func rejectWithMsgPerMode(mode Mode, msgAllow, msgDeny string) internal.RejectionFn {
 	msg := selectMsgByMode(mode, msgAllow, msgDeny)
-	return RejectWithMsg(msg)
-}
-
-type inputMatcher func(*strfrui.Input) (inputMatchResult, error)
-
-type sifterUnit struct {
-	match  inputMatcher
-	mode   Mode
-	reject RejectionFn
-}
-
-func (s *sifterUnit) Sift(input *strfrui.Input) (*strfrui.Result, error) {
-	matched, err := s.match(input)
-	if err != nil {
-		return nil, err
-	}
-	if shouldAccept(matched, s.mode) {
-		return input.Accept()
-	}
-	return s.reject(input), nil
-}
-
-func (s *sifterUnit) ShadowReject() *sifterUnit {
-	s.reject = ShadowReject
-	return s
-}
-
-func (s *sifterUnit) RejectWithMsg(msg string) *sifterUnit {
-	s.reject = RejectWithMsg(msg)
-	return s
-}
-
-func (s *sifterUnit) RejectWithMsgFromInput(getMsg func(*strfrui.Input) string) *sifterUnit {
-	s.reject = RejectWithMsgFromInput(getMsg)
-	return s
-}
-
-func newSifterUnit(matchInput inputMatcher, mode Mode, defaultRejFn RejectionFn) *sifterUnit {
-	return &sifterUnit{
-		match:  matchInput,
-		mode:   mode,
-		reject: defaultRejFn,
-	}
+	return internal.RejectWithMsg(msg)
 }
