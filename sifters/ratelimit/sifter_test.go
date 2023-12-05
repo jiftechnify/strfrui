@@ -228,7 +228,7 @@ func TestByUserAndKind(t *testing.T) {
 				expectResult(t, strfrui.ActionReject)(s.Sift(inputFromPubkeyWithKind(pubkey, 30000)))
 				expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromPubkeyWithKind(pubkey, 20000)))
 
-				// 1 second later: regular events shoule be accepted whereas replaceable ones should be rejected
+				// 1 second later: regular events should be accepted whereas replaceable ones should be rejected
 				time.Sleep(500 * time.Millisecond)
 				expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromPubkeyWithKind(pubkey, 1)))
 				expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromPubkeyWithKind(pubkey, 7)))
@@ -381,7 +381,7 @@ func TestByUserAndKind(t *testing.T) {
 				expectResult(t, strfrui.ActionReject)(s.Sift(inputFromIPAddrWithKind(addr, 30000)))
 				expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromIPAddrWithKind(addr, 20000)))
 
-				// 1 second later: regular events shoule be accepted whereas replaceable ones should be rejected
+				// 1 second later: regular events should be accepted whereas replaceable ones should be rejected
 				time.Sleep(500 * time.Millisecond)
 				expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromIPAddrWithKind(addr, 1)))
 				expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromIPAddrWithKind(addr, 7)))

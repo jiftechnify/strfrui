@@ -1,6 +1,6 @@
 // Package strfrui provides foundations for building [strfry's event-sifters plugins] in Go.
 //
-// If you want to explore built-in event-sifter implementaions and combinators,
+// If you want to explore built-in event-sifter implementations and combinators,
 // which can be used to make complex sifter logics from small parts,
 // see the doc of [github.com/jiftechnify/strfrui/sifters] package.
 //
@@ -72,7 +72,7 @@ type Input struct {
 
 	// Information about event source. If SourceType is...
 	//
-	//   - SourceTypeIP4 or SourceTypeIP6, it's a string representaion of client's IP address.
+	//   - SourceTypeIP4 or SourceTypeIP6, it's a string representation of client's IP address.
 	//   - SourceTypeStream or SourceTypeSync, it's a URL of a source relay.
 	//   - SourceTypeImport, it's an empty string.
 	SourceInfo string `json:"sourceInfo"`

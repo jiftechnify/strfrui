@@ -170,7 +170,7 @@ func (s *ModdedSifter) Label(label string) *ModdedSifter {
 	return s
 }
 
-// AccpetEarly sets "accept early" flag to the sifter.
+// AcceptEarly sets "accept early" flag to the sifter.
 //
 // If a sifter that is modified by this method is used in [PipelineSifter]s and it accept event,
 // pipelines accept it immediately, and all sifters after the sifter are skipped.
@@ -197,7 +197,7 @@ func (s *onlyIfCond) evalCond(input *strfrui.Input) (bool, error) {
 
 // OnlyIf makes the sifter is applied only if the given condition is met if it is used in [PipelineSifter]s or [OneOfSifter]s.
 //
-// When the evaluation of a combined sifter come accross a sifter modified by this,
+// When the evaluation of a combined sifter come across a sifter modified by this,
 // it first applies cond to an input. Then:
 //   - if cond accepts the input, the modified sifter is applied to the input normally.
 //   - if cond rejects the input, the modified sifter is skipped and move to next.
@@ -211,7 +211,7 @@ func (s *ModdedSifter) OnlyIf(cond strfrui.Sifter) *ModdedSifter {
 
 // OnlyIfNot makes the sifter is applied only if the given condition is not met if it is used in [PipelineSifter]s or [OneOfSifter]s.
 //
-// When the evaluation of a combined sifter come accross a sifter modified by this,
+// When the evaluation of a combined sifter come across a sifter modified by this,
 // it first applies cond to an input. Then:
 //   - if cond rejects the input, the modified sifter is applied to the input normally.
 //   - if cond accepts the input, the modified sifter is skipped and move to next.

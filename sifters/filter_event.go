@@ -92,7 +92,7 @@ func KindMatcherFallible(matcher func(int) (bool, error), mode Mode) *SifterUnit
 
 // KindMatcher makes an event-sifter that matches the kind of a Nostr event with the given matcher function.
 //
-// Note that the matcher function can't return any error unlike other XxxMathcer sifters.
+// Note that the matcher function can't return any error unlike other XxxMatcher sifters.
 // To use a fallible matcher, you may want to [KindMatcherFallible] instead.
 func KindMatcher(matcher func(int) bool, mode Mode) *SifterUnit {
 	matcherf := func(k int) (bool, error) {

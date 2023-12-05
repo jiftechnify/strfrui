@@ -66,7 +66,7 @@ func main() {
     rejectBlacklist := sifters.AuthorList(blacklist, sifters.Deny)
 
     // sifters.WithMod() makes sifters modifiable. 
-    // Sifter modification changes sifter's bahavior within combinators.
+    // Sifter modification changes sifter's behavior within combinators.
     // Here is an example of using OnlyIf() modifier.
     // * base sifter says: event’s content must contain the word "nostr".
     // * OnlyIf(...) says: restriction above applies to only kind 1 events.
@@ -114,7 +114,7 @@ func main() {
 }
 ```
 
-You may want to use `ratelimit.ByUserAndKind` to impose different limits for diffrent event kinds.
+You may want to use `ratelimit.ByUserAndKind` to impose different limits for different event kinds.
 
 
 ### Writing Custom Sifter from Scratch

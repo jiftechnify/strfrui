@@ -53,7 +53,7 @@ func TestContentHasAnyWord(t *testing.T) {
 		s := ContentHasAnyWord(words, Allow)
 
 		cs := []string{
-			"pronounciation of nostr is 'nostr'",
+			"pronunciation of nostr is 'nostr'",
 			"zap me later",
 		}
 
@@ -101,7 +101,7 @@ func TestContentHasAllWords(t *testing.T) {
 
 		cs := []string{
 			"random post",
-			"pronounciation of nostr is 'nostr'",
+			"pronunciation of nostr is 'nostr'",
 			"zap me later",
 		}
 
