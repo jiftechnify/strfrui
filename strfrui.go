@@ -1,3 +1,10 @@
+// Package strfrui provides foundations for building [strfry's event-sifters plugins] in Go.
+//
+// If you want to explore built-in event-sifter implementaions and combinators,
+// which can be used to make complex sifter logics from small parts,
+// see the doc of [github.com/jiftechnify/strfrui/sifters] package.
+//
+// [strfry's event-sifters plugins]: https://github.com/hoytech/strfry/blob/master/docs/plugins.md
 package strfrui
 
 import (
@@ -94,7 +101,8 @@ func (i *Input) Accept() (*Result, error) {
 
 // Reject rejects the event in the input with a rejection message to the client.
 //
-// As per [NIP-01], the message should be prefixed with a machine-readable word followed by ":", e.g. "blocked: you are not allowed to write events"
+// As per [NIP-01], the message should be prefixed with a machine-readable word followed by ":" (e.g. "blocked: you are not allowed to write events").
+// You can use [BuildRejectMessage] to build a rejection message in that format.
 //
 // [NIP-01]: https://github.com/nostr-protocol/nips/blob/master/01.md
 func (i *Input) Reject(msg string) (*Result, error) {
@@ -113,7 +121,7 @@ func (i *Input) ShadowReject() (*Result, error) {
 	}, nil
 }
 
-// "Machine-readable prefixes" for rejection messages. Use them with BuildRejectMessage().
+// "Machine-readable prefixes" for rejection messages. Use them with [BuildRejectMessage].
 const (
 	RejectReasonPrefixBlocked     = "blocked"
 	RejectReasonPrefixRateLimited = "rate-limited"
@@ -122,7 +130,7 @@ const (
 	RejectReasonPrefixError       = "error"
 )
 
-// BuildRejectMessage builds a rejection message with a "machine-readable prefix".
+// BuildRejectMessage builds a rejection message with a machine-readable prefix.
 //
 // The message format is defined in [NIP-01].
 //
@@ -147,6 +155,8 @@ func (s SifterFunc) Sift(input *Input) (*Result, error) {
 }
 
 // Runner implements the main routine of a event sifter as Run() method.
+// You may want to use [strfrui.New] to initialize a Runner and set a Sifter at the same time.
+//
 // The zero value for Runner is a valid Runner that accepts all events.
 type Runner struct {
 	sifter Sifter
@@ -202,26 +212,26 @@ func (r *Runner) Run() {
 	}
 }
 
-// New initializes a new Runner with the passed Sifter implementation set.
+// New initializes a new Runner and set the passed Sifter at the same time.
 func New(s Sifter) *Runner {
 	return &Runner{
 		sifter: s,
 	}
 }
 
-// NewWithSifterFunc initializes a new Runner with the passed event sifting function set as a Sifter.
+// NewWithSifterFunc initializes a new Runner and set the passed event sifting function as a Sifter at the same time.
 func NewWithSifterFunc(sf func(input *Input) (*Result, error)) *Runner {
 	return &Runner{
 		sifter: SifterFunc(sf),
 	}
 }
 
-// SiftWith sets a Sifter implementation to the Runner.
+// SiftWith replaces the Sifter in the Runner with the passed one.
 func (r *Runner) SiftWith(s Sifter) {
 	r.sifter = s
 }
 
-// SiftWithFunc sets an event sifting function as a Sifter to the Runner.
+// SiftWithFunc replaces the Sifter in the Runner with the passed event sifting function.
 func (r *Runner) SiftWithFunc(sf func(input *Input) (*Result, error)) {
 	r.sifter = SifterFunc(sf)
 }

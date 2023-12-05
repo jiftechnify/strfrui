@@ -12,7 +12,7 @@ go get github.com/jiftechnify/strfrui
 ## Features
 * Offers **out-of-the-box** event-sifters, including **rate limiters**.
 * **Sifter combinators**: you can build own event-sifters by composing small parts together.
-* Gives you foundations for writing a custom event-sifter as a simple function and running it.
+* Provides you foundations for writing a custom event-sifter as a simple function and running it.
 
 ## Examples
 ### Using Out-of-the-Box Sifters
@@ -44,7 +44,7 @@ The complete list of available built-in sifters is [here](https://github.com/jif
 
 ### Using Combinators to Compose Multiple Sifters
 
-strfrui offers ways to compose multiple event-sifters together, called "combinators". They combine sifters and make a single big sifter. 
+strfrui offers ways to compose multiple event-sifters together, called "combinators". They can be used to make a single complex sifter logic from small parts.
 
 The code below shows the usage of these combinators:
 
