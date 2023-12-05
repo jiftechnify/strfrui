@@ -1,4 +1,6 @@
 # strfrui
+[![GoDoc](https://pkg.go.dev/badge/github.com/jiftechnify/strfrui.svg)](https://pkg.go.dev/github.com/jiftechnify/strfrui)
+
 A framework for writing [strfry](https://github.com/hoytech/strfry)'s [event-sifter](https://github.com/hoytech/strfry/blob/master/docs/plugins.md) (write policy) plugins in Go.
 
 > This project is formerly known as [strfry-evsifter](https://github.com/jiftechnify/strfry-evsifter).
