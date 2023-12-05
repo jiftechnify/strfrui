@@ -39,7 +39,7 @@ func main() {
 }
 ```
 
-The complete list of available built-in sifters is [here](https://github.com/jiftechnify/strfrui#list-of-built-in-event-sifters).
+The complete list of available built-in sifters is [here](https://github.com/jiftechnify/strfrui/wiki/All-built%E2%80%90in-event%E2%80%90sifters).
 
 
 ### Using Combinators to Compose Multiple Sifters
@@ -87,7 +87,7 @@ func main() {
 }
 ```
 
-The complete list of available combinators and modifiers is [here](https://github.com/jiftechnify/strfrui#list-of-sifter-combinators).
+The complete list of available combinators and modifiers is [here](https://github.com/jiftechnify/strfrui/wiki/Sifter-combinators-and-modifiers).
 
 ### Bringing Rate Limiter to Strfry
 
@@ -160,97 +160,6 @@ func main() {
     strfrui.NewWithSifterFunc(acceptWhitelisted).Run()
 }
 ```
-
-## Details
-### About the `mode` parameter of built-in sifters
-
-Most of built-in event-sifters take `mode` parameter that specifies the behavior of sifters when an input matches given condition.
-
-- `sifters.Allow`: *Accept* the input if it matches given conditions ("whitelist").
-- `sifters.Deny`: *Reject* the input if it matches given conditions ("blacklist").
-
-
-### List of built-in event-sifters
-
-Sifters in `sifters` package:
-
-#### Match event against Nostr filters
-- `MatchesFilters(filters, mode)`
-
-#### Match event author (`pubkey`)
-- `AuthorMatcher(matcher, mode)`
-- `AuthorList(authors, mode)`
-
-#### Match event `kind`
-- `KindMatcherFallible(matcher, mode)`
-- `KindMatcher(matcher, mode)`
-- `KindList(kinds, mode)`
-
-#### Match event `tags`
-- `TagsMatcher(matcher, mode)`
-
-#### Limit event timestamp (`created_at`)
-- `CreatedAtRange(timeRange, mode)`
-
-#### Match `content`
-- `ContentMatcher(matcher, mode)`
-- `ContentHasAnyWord(words, mode)`
-- `ContentHasAllWords(words, mode)`
-- `ContentMatchesAnyRegexp(regexps, mode)`
-- `ContentMatchesAllRegexps(regexps, mode)`
-
-#### Set PoW minimum difficulty
-- `PoWMinDifficulty(minDifficulty)`
-
-#### Match IP address of event source
-- `SourceIPMatcher(matcher, mode, modeForUnknownSource)`
-- `SourceIPPrefixList(ipPrefixes, mode, modeForUnknownSource)`
-
----
-
-Rate limiting sifters in `ratelimit` package:
-
-- `ByUser(quota, userKey)`
-- `ByUserAndKind(quotas, userKey)`
-
-
-### List of sifter combinators
-
-All combinators are in `sifters` package.
-
-#### `Pipeline(...sifters)`
-
-Combines a list of sifters into one. The resulting sifter accepts an input if *all* sub-sifters accept it. 
-
-If any sub-sifter rejects the input, the combined sifter rejects with the result from the rejecting sub-sifter.
-
-#### `OneOf(...sifters)`
-
-Combines a list of sifters into one. The resulting sifter accepts an input if *one of* sub-sifters accepts it.
-
-If all sub-sifters rejects the input, the combined sifter rejects with message: `"blocked: any of sub-sifters didn't accept the event"` by default. You can customize rejection behavior by calling `.RejectWithMsg()/.RejectWithMsgFromInput()/.ShadowReject()` methods on it.
-
-
-### List of sifter modifiers
-
-Sifter modifiers modifies behavior of the underlying sifter when it is composed via sifter combinators.
-
-You can start modification by wrapping a sifter with `sifters.WithMod(sifter)`, then chain method calls on the wrapper.
-
-#### `.AcceptEarly()`
-
-If a sifter modified by `.AcceptEarly()` are used in `Pipeline(...)` and the modified sifter accepts an event, the overall pipeline accepts it immediately, and all sifters after that sifter are skipped.
-
-#### `.OnlyIf(cond) / .OnlyIfNot(cond)`
-
-If a sifter modified by `.OnlyIf(cond)` are used in `Pipeline(...)` or `OneOf(...)`, the combined sifter first applies `cond` to an input. Then,
-- if `cond` *accepts* the input, the modified sifter is applied to the input normally.
-- if `cond` *rejects* the input, the modified sifter is *skipped* and move to next.
-
-`.OnlyIfNot(cond)` is opposite of `.OnlyIf(cond)`.
-
-`cond` can be arbitrary event-sifter. 
-
 
 ## License
 MIT
