@@ -159,16 +159,16 @@ func (c *fakeableClock) reset() {
 //
 // Either of the durations can be zero (or left unspecified), means the corresponding side of the range is unbounded.
 type RelativeTimeRange struct {
-	maxPastDelta   time.Duration
-	maxFutureDelta time.Duration
+	MaxPastDelta   time.Duration
+	MaxFutureDelta time.Duration
 }
 
 // Contains checks if the given time is in the time range.
 func (r RelativeTimeRange) Contains(t time.Time) bool {
 	now := clock.now()
 
-	okPast := r.maxPastDelta == 0 || !t.Before(now.Add(-r.maxPastDelta))
-	okFuture := r.maxFutureDelta == 0 || !t.After(now.Add(r.maxFutureDelta))
+	okPast := r.MaxPastDelta == 0 || !t.Before(now.Add(-r.MaxPastDelta))
+	okFuture := r.MaxFutureDelta == 0 || !t.After(now.Add(r.MaxFutureDelta))
 
 	return okPast && okFuture
 }
@@ -176,12 +176,12 @@ func (r RelativeTimeRange) Contains(t time.Time) bool {
 // String returns a string representation of the time range.
 func (r RelativeTimeRange) String() string {
 	left := "-∞"
-	if r.maxPastDelta != 0 {
-		left = r.maxFutureDelta.String() + " ago"
+	if r.MaxPastDelta != 0 {
+		left = r.MaxFutureDelta.String() + " ago"
 	}
 	right := "+∞"
-	if r.maxFutureDelta != 0 {
-		right = r.maxFutureDelta.String() + " after"
+	if r.MaxFutureDelta != 0 {
+		right = r.MaxFutureDelta.String() + " after"
 	}
 	return fmt.Sprintf("[%s, %s]", left, right)
 }
