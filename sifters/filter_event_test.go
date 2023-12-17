@@ -274,8 +274,8 @@ func TestCreatedAtRange(t *testing.T) {
 
 	t.Run("accepts if created_at is within the limit (closed interval)", func(t *testing.T) {
 		s := CreatedAtRange(RelativeTimeRange{
-			maxPastDelta:   10 * time.Minute,
-			maxFutureDelta: 5 * time.Minute,
+			MaxPastDelta:   10 * time.Minute,
+			MaxFutureDelta: 5 * time.Minute,
 		}, Allow)
 
 		evs := []*nostr.Event{
@@ -297,7 +297,7 @@ func TestCreatedAtRange(t *testing.T) {
 
 	t.Run("accepts if created_at is within the limit (left-opened interval)", func(t *testing.T) {
 		s := CreatedAtRange(RelativeTimeRange{
-			maxFutureDelta: 5 * time.Minute,
+			MaxFutureDelta: 5 * time.Minute,
 		}, Allow)
 
 		evs := []*nostr.Event{
@@ -320,7 +320,7 @@ func TestCreatedAtRange(t *testing.T) {
 
 	t.Run("accepts if created_at is within the limit (right-opened interval)", func(t *testing.T) {
 		s := CreatedAtRange(RelativeTimeRange{
-			maxPastDelta: 10 * time.Minute,
+			MaxPastDelta: 10 * time.Minute,
 		}, Allow)
 
 		evs := []*nostr.Event{
@@ -343,8 +343,8 @@ func TestCreatedAtRange(t *testing.T) {
 
 	t.Run("rejects if created_at is not within the limit", func(t *testing.T) {
 		s := CreatedAtRange(RelativeTimeRange{
-			maxPastDelta:   10 * time.Minute,
-			maxFutureDelta: 5 * time.Minute,
+			MaxPastDelta:   10 * time.Minute,
+			MaxFutureDelta: 5 * time.Minute,
 		}, Allow)
 
 		evs := []*nostr.Event{
