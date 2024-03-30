@@ -1,6 +1,9 @@
 # strfrui
 
+[![GitHub Release](https://img.shields.io/github/v/release/jiftechnify/strfrui)](https://github.com/jiftechnify/strfrui/releases/latest)
 [![GoDoc](https://pkg.go.dev/badge/github.com/jiftechnify/strfrui.svg)](https://pkg.go.dev/github.com/jiftechnify/strfrui)
+[![CI](https://github.com/jiftechnify/strfrui/actions/workflows/ci.yml/badge.svg)](https://github.com/jiftechnify/strfrui/actions/workflows/ci.yml)
+
 
 A framework for writing [strfry](https://github.com/hoytech/strfry)'s [event-sifter](https://github.com/hoytech/strfry/blob/master/docs/plugins.md) (write policy) plugins in Go.
 
