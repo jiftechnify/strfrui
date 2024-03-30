@@ -8,10 +8,13 @@ import (
 
 func ExampleByUser() {
 	rateLimiter := ratelimit.ByUser(
-		ratelimit.QuotaPerHour(500).WithBurst(50), // 500 events/h per user, allowing burst up to 50 events
-		ratelimit.PubKey, // "user" is identified by the pubkey
+		// 500 events/h per user, allowing burst up to 50 events
+		ratelimit.QuotaPerHour(500).WithBurst(50),
+		// "users" are identified by the pubkey
+		ratelimit.PubKey,
 	).
-		Exclude(func(input *strfrui.Input) bool { // exclude all ephemeral events from rate limiting
+		// exclude all ephemeral events from rate limiting
+		Exclude(func(input *strfrui.Input) bool {
 			return sifters.KindsAllEphemeral(input.Event.Kind)
 		})
 
@@ -37,8 +40,10 @@ func ExampleByUser_pipeline() {
 
 func ExampleByUserAndKind() {
 	limiter := ratelimit.ByUserAndKind([]ratelimit.QuotaForKinds{
-		ratelimit.QuotaPerHour(100).WithBurst(10).ForKinds(1), // 100 kind:1 events/h per user, allowing burst up to 10 events
-		ratelimit.QuotaPerHour(200).WithBurst(50).ForKinds(7), // 200 kind:7 events/h per user, allowing burst up to 50 events
+		// 100 kind:1 events/h per user, allowing burst up to 10 events
+		ratelimit.QuotaPerHour(100).WithBurst(10).ForKinds(1),
+		// 200 kind:7 events/h per user, allowing burst up to 50 events
+		ratelimit.QuotaPerHour(200).WithBurst(50).ForKinds(7),
 	}, ratelimit.PubKey)
 
 	strfrui.New(limiter).Run()

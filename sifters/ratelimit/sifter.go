@@ -104,7 +104,7 @@ func newSifterUnit(selectLimiter selectRateLimiterFn, deriveLimitKey rateLimitKe
 
 // ByUser creates a event-sifter that imposes rate limit on event write request per user.
 //
-// "User" is identified by the source IP address or the pubkey of the event, depending on the given [UserKey].
+// "Users" are identified by the source IP address or the pubkey of the event, depending on the given [UserKey].
 //
 // Note that this doesn't impose a rate limit to events not from end-users (i.e. events imported from other relays).
 func ByUser(quota Quota, uk UserKey) *SifterUnit {
@@ -143,7 +143,7 @@ type rateLimiterPerKind struct {
 // The quota for each event kind is specified by the given list of [QuotaForKinds].
 // For event kinds for which a quota is not defined, no rate limit is imposed.
 //
-// "User" is identified by the source IP address or the pubkey of the event, depending on the given [UserKey].
+// "Users" are identified by the source IP address or the pubkey of the event, depending on the given [UserKey].
 //
 // Note that this doesn't impose a rate limit to events not from end-users (i.e. events imported from other relays).
 func ByUserAndKind(quotas []QuotaForKinds, uk UserKey) *SifterUnit {

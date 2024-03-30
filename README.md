@@ -1,4 +1,5 @@
 # strfrui
+
 [![GoDoc](https://pkg.go.dev/badge/github.com/jiftechnify/strfrui.svg)](https://pkg.go.dev/github.com/jiftechnify/strfrui)
 
 A framework for writing [strfry](https://github.com/hoytech/strfry)'s [event-sifter](https://github.com/hoytech/strfry/blob/master/docs/plugins.md) (write policy) plugins in Go.
@@ -12,11 +13,13 @@ go get github.com/jiftechnify/strfrui
 ```
 
 ## Features
-* Offers **out-of-the-box** event-sifters, including **rate limiters**.
-* **Sifter combinators**: you can build own event-sifters by composing small parts together.
-* Provides you foundations for writing a custom event-sifter as a simple function and running it.
+
+- Offers **out-of-the-box** event-sifters, including **rate limiters**.
+- **Sifter combinators**: you can build own event-sifters by composing small parts together.
+- Provides you foundations for writing a custom event-sifter as a simple function and running it.
 
 ## Examples
+
 ### Using Out-of-the-Box Sifters
 
 The code below implements the same logic as [this example](https://github.com/hoytech/strfry/blob/master/docs/plugins.md#example-whitelist) using built-in event sifters in `sifters` package:
@@ -43,7 +46,6 @@ func main() {
 
 The complete list of available built-in sifters is [here](https://github.com/jiftechnify/strfrui/wiki/All-built%E2%80%90in-event%E2%80%90sifters).
 
-
 ### Using Combinators to Compose Multiple Sifters
 
 strfrui offers ways to compose multiple event-sifters together, called "combinators". They can be used to make a single complex sifter logic from small parts.
@@ -67,7 +69,7 @@ func main() {
     acceptAdmin := sifters.AuthorList(adminList, sifters.Allow)
     rejectBlacklist := sifters.AuthorList(blacklist, sifters.Deny)
 
-    // sifters.WithMod() makes sifters modifiable. 
+    // sifters.WithMod() makes sifters modifiable.
     // Sifter modification changes sifter's behavior within combinators.
     // Here is an example of using OnlyIf() modifier.
     // * base sifter says: event’s content must contain the word "nostr".
@@ -106,22 +108,35 @@ import (
 )
 
 func main() {
-    // every users can write 2 events per second, allowing burst of 5 events.
     limiter := ratelimit.ByUser(
-        ratelimit.Quota{MaxRate: ratelimit.PerSec(2), MaxBurst: 5},
-        ratelimit.Pubkey, // "user" is identified by pubkey.
-                          // you can also use ratelimit.IPAddr here.
-    )
+        // every users can write 2 events per second, allowing burst up to 5 events.
+        ratelimit.QuotaPerSec(2).WithBurst(5),
+        // "users" are identified by pubkey. You can also use ratelimit.IPAddr here.
+        ratelimit.Pubkey, 
+    ).
+    // exclude all ephemeral events from rate limiting
+    Exclude(func(input *strfrui.Input) bool { 
+        return sifters.KindsAllEphemeral(input.Event.Kind)
+    })
+
     strfrui.New(limiter).Run()
 }
 ```
 
 You may want to use `ratelimit.ByUserAndKind` to impose different limits for different event kinds.
 
+```go
+limiter := ratelimit.ByUserAndKind([]ratelimit.QuotaForKinds{
+    // 2 events/s, burst up to 10 events for kind:1 
+    ratelimit.QuotaPerSec(2).WithBurst(10).ForKinds(1),
+    // 5 events/s, burst up to 50 events for kind:7
+    ratelimit.QuotaPerSec(5).WithBurst(50).ForKinds(7),
+}, ratelimit.Pubkey)
+```
 
 ### Writing Custom Sifter from Scratch
 
-Essentially, event-sifter is just a function that takes an "input" (event + metadata of event source etc.) and returns "result" (action to take on the event: accept or reject). 
+Essentially, event-sifter is just a function that takes an "input" (event + metadata of event source etc.) and returns "result" (action to take on the event: accept or reject).
 
 ```go
 type Sifter interface {
@@ -131,7 +146,7 @@ type Sifter interface {
 
 If you feel cumbersome to build sifters you want by combining small blocks, you can still implement overall sifter logic as a Go function. Of course, sifters written in such a way are also composable using the combinators!
 
-The code below is a example of writing event-sifter as a function.  The logic is equivalent to the sifter in the first example, but it adds custom logging.
+The code below is a example of writing event-sifter as a function. The logic is equivalent to the sifter in the first example, but it adds custom logging.
 
 ```go
 package main
@@ -149,7 +164,7 @@ var whitelist = map[string]struct{}{
 func acceptWhitelisted(input *strfrui.Input) (*strfrui.Result, error) {
 	if _, ok := whitelist[input.Event.PubKey]; ok {
 		return input.Accept()
-	} 
+	}
 
 	// you can emit arbitrary logs by log.Print() family
 	log.Println("blocking event!")
@@ -164,4 +179,5 @@ func main() {
 ```
 
 ## License
+
 MIT
