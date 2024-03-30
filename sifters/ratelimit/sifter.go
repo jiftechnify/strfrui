@@ -104,12 +104,12 @@ func newSifterUnit(selectLimiter selectRateLimiterFn, deriveLimitKey rateLimitKe
 
 // ByUser creates a event-sifter that imposes rate limit on event write request per user.
 //
-// "User" is identified by the source IP address or the pubkey of the event, depending on the given [UserKey].
+// "Users" are identified by the source IP address or the pubkey of the event, depending on the given [UserKey].
 //
 // Note that this doesn't impose a rate limit to events not from end-users (i.e. events imported from other relays).
 func ByUser(quota Quota, uk UserKey) *SifterUnit {
 	store, _ := memstore.NewCtx(65536)
-	rateLimiter, err := throttled.NewGCRARateLimiterCtx(store, quota)
+	rateLimiter, err := throttled.NewGCRARateLimiterCtx(store, throttled.RateQuota(quota))
 	if err != nil {
 		log.Fatalf("ratelimit.ByUser: failed to initialize rate-limiter: %v", err)
 	}
@@ -140,17 +140,17 @@ type rateLimiterPerKind struct {
 }
 
 // ByUserAndKind creates a event-sifter that imposes rate limit on event write request per user and event kind.
-// The quota for each event kind is specified by the given list of [KindQuota].
+// The quota for each event kind is specified by the given list of [QuotaForKinds].
 // For event kinds for which a quota is not defined, no rate limit is imposed.
 //
-// "User" is identified by the source IP address or the pubkey of the event, depending on the given [UserKey].
+// "Users" are identified by the source IP address or the pubkey of the event, depending on the given [UserKey].
 //
 // Note that this doesn't impose a rate limit to events not from end-users (i.e. events imported from other relays).
-func ByUserAndKind(quotas []KindQuota, uk UserKey) *SifterUnit {
+func ByUserAndKind(quotas []QuotaForKinds, uk UserKey) *SifterUnit {
 	store, _ := memstore.NewCtx(65536)
 	limiters := make([]rateLimiterPerKind, 0, len(quotas))
 	for _, kq := range quotas {
-		rateLimiter, err := throttled.NewGCRARateLimiterCtx(store, kq.quota)
+		rateLimiter, err := throttled.NewGCRARateLimiterCtx(store, throttled.RateQuota(kq.quota))
 		if err != nil {
 			log.Fatalf("ratelimit.ByUser: failed to initialize rate-limiter: %v", err)
 		}
