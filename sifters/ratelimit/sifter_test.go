@@ -50,7 +50,7 @@ func TestByUser(t *testing.T) {
 	t.Run("userKey: Pubkey, basic case", func(t *testing.T) {
 		t.Parallel()
 
-		s := ByUser(Quota{MaxRate: PerSec(1)}, PubKey)
+		s := ByUser(QuotaPerSec(1), PubKey)
 
 		// first event from 2 users
 		expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromPubkey("1")))
@@ -73,7 +73,7 @@ func TestByUser(t *testing.T) {
 	t.Run("userKey: Pubkey, allowing burst", func(t *testing.T) {
 		t.Parallel()
 
-		s := ByUser(Quota{MaxRate: PerSec(1), MaxBurst: 1}, PubKey)
+		s := ByUser(QuotaPerSec(1).WithBurst(1), PubKey)
 
 		// first event from 2 users
 		expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromPubkey("1")))
@@ -111,7 +111,7 @@ func TestByUser(t *testing.T) {
 		fromAdmin := func(i *strfrui.Input) bool {
 			return i.Event.PubKey == "admin"
 		}
-		s := ByUser(Quota{MaxRate: PerSec(1)}, PubKey).Exclude(fromAdmin)
+		s := ByUser(QuotaPerSec(1), PubKey).Exclude(fromAdmin)
 
 		// rate-limit events from normal users
 		expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromPubkey("normal")))
@@ -129,7 +129,7 @@ func TestByUser(t *testing.T) {
 	t.Run("userKey: IPAddr, basic case", func(t *testing.T) {
 		t.Parallel()
 
-		s := ByUser(Quota{MaxRate: PerSec(1)}, IPAddr)
+		s := ByUser(QuotaPerSec(1), IPAddr)
 
 		// first event from 2 users
 		expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromIPAddr("192.168.1.1")))
@@ -152,7 +152,7 @@ func TestByUser(t *testing.T) {
 	t.Run("userKey: IPAddr, accept events from unknown source", func(t *testing.T) {
 		t.Parallel()
 
-		s := ByUser(Quota{MaxRate: PerSec(1)}, IPAddr)
+		s := ByUser(QuotaPerSec(1), IPAddr)
 
 		expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromIPAddr("???")))
 		expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromIPAddr("???")))
@@ -165,7 +165,7 @@ func TestByUser(t *testing.T) {
 		fromLocal := func(i *strfrui.Input) bool {
 			return i.SourceInfo == "127.0.0.1"
 		}
-		s := ByUser(Quota{MaxRate: PerSec(1)}, IPAddr).Exclude(fromLocal)
+		s := ByUser(QuotaPerSec(1), IPAddr).Exclude(fromLocal)
 
 		// rate-limit events from normal addresses
 		expectResult(t, strfrui.ActionAccept)(s.Sift(inputFromIPAddr("192.168.1.1")))
@@ -199,12 +199,12 @@ func inputFromIPAddrWithKind(addr string, kind int) *strfrui.Input {
 func TestByUserAndKind(t *testing.T) {
 	t.Parallel()
 
-	t.Run("userKey: Pubkey, basic case (QuotaForKindsFn)", func(t *testing.T) {
+	t.Run("userKey: Pubkey, basic case (Quota.ForKindsMatching)", func(t *testing.T) {
 		t.Parallel()
 
-		quotas := []KindQuota{
-			QuotaForKindsFn(sifters.KindsAllRegular, Quota{MaxRate: PerMin(60)}),     // 1 ev/sec
-			QuotaForKindsFn(sifters.KindsAllReplaceable, Quota{MaxRate: PerMin(30)}), // 0.5 ev/sec
+		quotas := []QuotaForKinds{
+			QuotaPerMin(60).ForKindsMatching(sifters.KindsAllRegular),     // 1 ev/sec
+			QuotaPerMin(30).ForKindsMatching(sifters.KindsAllReplaceable), // 0.5 ev/sec
 		}
 		s := ByUserAndKind(quotas, PubKey)
 
@@ -252,12 +252,12 @@ func TestByUserAndKind(t *testing.T) {
 		wg.Wait()
 	})
 
-	t.Run("userKey: Pubkey, basic case (QuotaForKinds)", func(t *testing.T) {
+	t.Run("userKey: Pubkey, basic case (Quota.ForKinds)", func(t *testing.T) {
 		t.Parallel()
 
-		quotas := []KindQuota{
-			QuotaForKinds([]int{1}, Quota{MaxRate: PerMin(30)}), // 0.5 ev/sec
-			QuotaForKinds([]int{7}, Quota{MaxRate: PerMin(60)}), // 1 ev/sec
+		quotas := []QuotaForKinds{
+			QuotaPerMin(30).ForKinds(1), // 0.5 ev/sec
+			QuotaPerMin(60).ForKinds(7), // 1 ev/sec
 		}
 		s := ByUserAndKind(quotas, PubKey)
 
@@ -300,8 +300,8 @@ func TestByUserAndKind(t *testing.T) {
 	t.Run("userKey: Pubkey, exclude", func(t *testing.T) {
 		t.Parallel()
 
-		quotas := []KindQuota{
-			QuotaForKindsFn(sifters.KindsAllRegular, Quota{MaxRate: PerMin(60)}), // 1 ev/sec
+		quotas := []QuotaForKinds{
+			QuotaPerMin(60).ForKindsMatching(sifters.KindsAllRegular), // 1 ev/sec
 		}
 		fromAdmin := func(i *strfrui.Input) bool {
 			return i.Event.PubKey == "admin"
@@ -355,9 +355,9 @@ func TestByUserAndKind(t *testing.T) {
 	t.Run("userKey: IPAddr, basic case", func(t *testing.T) {
 		t.Parallel()
 
-		quotas := []KindQuota{
-			QuotaForKindsFn(sifters.KindsAllRegular, Quota{MaxRate: PerMin(60)}),     // 1 ev/sec
-			QuotaForKindsFn(sifters.KindsAllReplaceable, Quota{MaxRate: PerMin(30)}), // 0.5 ev/sec
+		quotas := []QuotaForKinds{
+			QuotaPerMin(60).ForKindsMatching(sifters.KindsAllRegular),     // 1 ev/sec
+			QuotaPerMin(30).ForKindsMatching(sifters.KindsAllReplaceable), // 0.5 ev/sec
 		}
 		s := ByUserAndKind(quotas, IPAddr)
 
@@ -408,8 +408,8 @@ func TestByUserAndKind(t *testing.T) {
 	t.Run("userKey: IPAddr, exclude", func(t *testing.T) {
 		t.Parallel()
 
-		quotas := []KindQuota{
-			QuotaForKindsFn(sifters.KindsAllRegular, Quota{MaxRate: PerMin(60)}), // 1 ev/sec
+		quotas := []QuotaForKinds{
+			QuotaPerMin(60).ForKindsMatching(sifters.KindsAllRegular), // 1 ev/sec
 		}
 		fromLocal := func(i *strfrui.Input) bool {
 			return i.SourceInfo == "127.0.0.1"
@@ -464,8 +464,8 @@ func TestByUserAndKind(t *testing.T) {
 	t.Run("userKey: IPAddr, accept events from unknown source", func(t *testing.T) {
 		t.Parallel()
 
-		quotas := []KindQuota{
-			QuotaForKindsFn(sifters.KindsAllRegular, Quota{MaxRate: PerMin(60)}),
+		quotas := []QuotaForKinds{
+			QuotaPerMin(60).ForKindsMatching(sifters.KindsAllRegular),
 		}
 		s := ByUserAndKind(quotas, IPAddr)
 
