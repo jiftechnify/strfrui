@@ -43,7 +43,7 @@ func (s *PipelineSifter) Sift(input *strfrui.Input) (*strfrui.Result, error) {
 		}
 		if child.acceptEarly && res.Action == strfrui.ActionAccept {
 			// early return
-			// log.Printf("[pipeline %s] %q accepted event (id: %v), so returning ealry", s.name, child.label, input.Event.ID)
+			// log.Printf("[pipeline %s] %q accepted event (id: %v), so returning early", s.name, child.label, input.Event.ID)
 			return res, nil
 		}
 		if res.Action != strfrui.ActionAccept {
@@ -104,7 +104,7 @@ func (s *OneOfSifter) Sift(input *strfrui.Input) (*strfrui.Result, error) {
 			return nil, err
 		}
 		if res.Action == strfrui.ActionAccept {
-			// accept ealry if one of the children accepts the event
+			// accept early if one of the children accepts the event
 			return res, nil
 		}
 	}
