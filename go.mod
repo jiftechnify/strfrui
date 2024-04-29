@@ -3,7 +3,7 @@ module github.com/jiftechnify/strfrui
 go 1.21
 
 require (
-	github.com/nbd-wtf/go-nostr v0.30.0
+	github.com/nbd-wtf/go-nostr v0.30.2
 	github.com/throttled/throttled/v2 v2.12.0
 )
 
