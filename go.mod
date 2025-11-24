@@ -4,7 +4,7 @@ go 1.24.1
 
 require (
 	github.com/nbd-wtf/go-nostr v0.52.3
-	github.com/throttled/throttled/v2 v2.12.0
+	github.com/throttled/throttled/v2 v2.15.0
 )
 
 require (
